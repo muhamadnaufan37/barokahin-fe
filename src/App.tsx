@@ -1,43 +1,43 @@
 import React from "react";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
-import { AppProvider } from "./context/AppContext";
 import { Layout } from "./components/Layout";
-import { RadarPage } from "./pages/RadarPage";
-import { SegeraPage } from "./pages/SegeraPage";
-import { ListingDetailPage } from "./pages/ListingDetailPage";
-import { SharePage } from "./pages/SharePage";
-import { MyClaimsPage } from "./pages/MyClaimsPage";
-import { ManageListingsPage } from "./pages/ManageListingsPage";
-import { ChatPage } from "./pages/ChatPage";
-import { HandoverPage } from "./pages/HandoverPage";
-import { ProfilePage } from "./pages/ProfilePage";
-import { AboutPage, HelpPage, RulesPage } from "./pages/InfoPages";
-import { AdminPage } from "./pages/AdminPage";
+import { StorefrontProvider } from "./context/StorefrontContext";
+import { ActivitiesPage } from "./pages/ActivitiesPage";
+import { ActivityDetailPage } from "./pages/ActivityDetailPage";
+import { CatalogPage } from "./pages/CatalogPage";
+import { DonationPage } from "./pages/DonationPage";
+import { HomePage } from "./pages/HomePage";
+import { ItemDetailPage } from "./pages/ItemDetailPage";
+import { StaticPage } from "./pages/StaticPage";
 
 export const App: React.FC = () => {
   return (
     <BrowserRouter>
-      <AppProvider>
+      <StorefrontProvider>
         <Layout>
           <Routes>
-            <Route path="/" element={<RadarPage />} />
-            <Route path="/segera" element={<SegeraPage />} />
-            <Route path="/barokah/:id" element={<ListingDetailPage />} />
-            <Route path="/bagikan" element={<SharePage />} />
-            <Route path="/klaim" element={<MyClaimsPage />} />
-            <Route path="/kelola" element={<ManageListingsPage />} />
-            <Route path="/chat/:claimId" element={<ChatPage />} />
-            <Route path="/serah-terima/:claimId" element={<HandoverPage />} />
-            <Route path="/profil" element={<ProfilePage />} />
-            <Route path="/pengaturan" element={<ProfilePage />} />
-            <Route path="/bantuan" element={<HelpPage />} />
-            <Route path="/aturan" element={<RulesPage />} />
-            <Route path="/tentang" element={<AboutPage />} />
-            <Route path="/admin/*" element={<AdminPage />} />
+            <Route path="/" element={<HomePage />} />
+            <Route path="/katalog" element={<CatalogPage />} />
+            <Route path="/barang/:slug" element={<ItemDetailPage />} />
+            <Route path="/kegiatan" element={<ActivitiesPage />} />
+            <Route path="/kegiatan/:slug" element={<ActivityDetailPage />} />
+            <Route path="/dampak" element={<Navigate to="/kegiatan" replace />} />
+            <Route path="/donasi-barang" element={<DonationPage />} />
+            <Route path="/tentang" element={<StaticPage pageKey="tentang" />} />
+            <Route
+              path="/cara-kerja"
+              element={<StaticPage pageKey="cara-kerja" />}
+            />
+            <Route path="/faq" element={<StaticPage pageKey="faq" />} />
+            <Route
+              path="/kebijakan"
+              element={<StaticPage pageKey="kebijakan" />}
+            />
+            <Route path="/kontak" element={<StaticPage pageKey="kontak" />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </Layout>
-      </AppProvider>
+      </StorefrontProvider>
     </BrowserRouter>
   );
 };

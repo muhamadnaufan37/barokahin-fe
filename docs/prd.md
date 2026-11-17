@@ -2,19 +2,20 @@
 
 | | |
 |---|---|
-| **Versi** | 0.2 (draf untuk review tim UI/UX) |
+| **Versi** | 0.3 (perubahan arah produk; draf untuk review tim UI/UX, Frontend, Backend) |
 | **Tanggal** | 17 November 2026 |
 | **Pemilik produk** | _(isi nama)_ |
-| **Status** | Draf. Jawaban pemilik produk sudah dimasukkan; beberapa keputusan menunggu rapat (lihat [Bagian 18](#18-keputusan-dan-pertanyaan-terbuka)) |
-| **Pembaca** | UI/UX (utama), Frontend, Backend, QA |
+| **Status** | Draf. Beberapa keputusan menunggu jawaban (lihat [Bagian 18](#18-keputusan-dan-pertanyaan-terbuka)) |
+| **Pembaca** | UI/UX (utama), Frontend (2 aplikasi), Backend, QA |
 
-> **Catatan jujur tentang isi dokumen ini.** Semua yang berlabel **[Asumsi]** atau **[Usulan]** belum divalidasi dengan pengguna nyata. Dokumen ini **tidak memuat data pasar atau statistik** karena belum ada sumber yang diberikan. Angka target ditulis _TBD_ sampai ada data dasar (baseline).
+> **Catatan jujur tentang isi dokumen ini.** Semua yang berlabel **[Asumsi]** atau **[Usulan]** belum divalidasi. Dokumen ini **tidak memuat data pasar atau statistik** karena belum ada sumbernya. Angka target ditulis _TBD_ sampai ada data dasar. Saya **tidak punya informasi apa pun tentang sistem `digitaldatagenerus`** (teknologi, API, apakah sudah berjalan) selain yang disebut pemilik produk, jadi bagian terkait dibuat netral dan ditandai untuk dikonfirmasi.
 
 ### Riwayat revisi
 | Versi | Perubahan |
 |---|---|
-| 0.1 | Draf awal: berbagi barang gratis |
-| 0.2 | Mengikuti jawaban pemilik produk: **barang gratis dan berbayar**, **makanan kemasan dan siap saji** dengan **Jalur Segera** untuk yang cepat kedaluwarsa, **PWA** sebagai platform, **kerangka verifikasi** disiapkan tapi tidak wajib, **dukungan sponsor**, **fokus awal Bandung dan sekitarnya**, serta fitur opsional untuk komunitas Muslim. Aspek legal, moderasi, dan merek ditunda sampai rapat |
+| 0.1 | Berbagi barang gratis antarpengguna |
+| 0.2 | Gratis dan berbayar antarpengguna, Jalur Segera, PWA, fokus Bandung |
+| **0.3** | **Arah berubah:** barang dari pengguna **dikumpulkan datanya**, **dikurasi admin**, **ditampilkan di website untuk dijual**, dan **hasilnya untuk pendanaan kegiatan**. Ada **dua frontend**: `digitaldatagenerus` (kelola data user dan barang) dan **storefront baru** (tampilan barang jual). Model antarpengguna v0.2 diarsipkan di `arsip/prd_v0.2_berbagi-antarpengguna.md` |
 
 ---
 
@@ -22,25 +23,44 @@
 
 | Tim | Baca terutama | Hasil yang diharapkan |
 |---|---|---|
-| **UI/UX** | Bagian 2–9, 11, 15 | Riset, user flow, wireframe, design system, uji usability |
-| **Frontend** | Bagian 6–10, 12, 14 | Arsitektur UI, rute, state, performa, aksesibilitas |
-| **Backend** | Bagian 6–10, 13, 14, 15 | Model data, API, aturan bisnis, keamanan, moderasi |
+| **UI/UX** | Bagian 1–9, 11, 15 | Riset, flow, wireframe, design system untuk **dua** antarmuka |
+| **Frontend 1 (digitaldatagenerus)** | Bagian 6, 9, 10.1, 12.1 | Aplikasi admin: kelola donatur, barang, media, pesanan, dana |
+| **Frontend 2 (storefront)** | Bagian 6, 9, 10.2, 12.2 | Situs publik: katalog, detail, kegiatan, transparansi |
+| **Backend** | Bagian 6, 9, 10, 13, 14, 15 | Model data, API publik dan admin, media, keamanan |
 | **QA** | Bagian 10, 14, 15, 17 | Kriteria uji |
+
+---
+
+## Cara saya memahami update ini (mohon dikoreksi bila keliru)
+
+| # | Pemahaman | Sumber |
+|---|---|---|
+| A1 | Pengguna (**donatur**) menyerahkan barang; **datanya dikumpulkan** pengelola. Donatur tidak menjual sendiri. | Pernyataan pemilik produk + **[Asumsi]** |
+| A2 | Barang **dijual oleh pengelola** di website. **Harga ditetapkan admin.** | Pernyataan + **[Asumsi]** pada siapa menetapkan harga |
+| A3 | **Hasil penjualan untuk pendanaan kegiatan.** | Pernyataan pemilik produk |
+| A4 | Dua peran di sisi tampilan: **Publik** (melihat) dan **Admin** (mengunggah foto/video dan memberi keterangan). | Pernyataan pemilik produk |
+| A5 | **Frontend 1 = `digitaldatagenerus`** untuk mengelola data user dan barangnya. **Frontend 2 = tampilan baru** untuk menampilkan barang yang dijual. | Pernyataan pemilik produk |
+| A6 | Kedua frontend memakai **satu backend/data yang sama**. | **[Asumsi]** |
+| A7 | Publik membeli lewat **permintaan beli** yang diproses admin; pembayaran dilakukan di luar aplikasi pada MVP. | **[Usulan]**, belum diputuskan (K1) |
+| A8 | "Kegiatan" adalah kegiatan sosial/keagamaan yang diselenggarakan pengelola; jenisnya belum disebutkan. | **[Asumsi]** |
+| A9 | Model berbagi antarpengguna v0.2 (klaim, chat, serah terima berkode, Jalur Segera) **tidak masuk MVP**. | **[Asumsi]**, mohon konfirmasi (K8) |
 
 ---
 
 ## 1. Ringkasan
 
-**Barokahiin** adalah aplikasi web (PWA) tempat orang membagikan atau menawarkan barang dan makanan kepada orang di sekitarnya. Barang bisa **gratis** atau **berbayar**. Orang yang memasang barang (**Pemberi**) menampilkannya di aplikasi. Orang yang membutuhkan (**Penerima**) mencari barang di sekitarnya, mengajukan permintaan, lalu mengambilnya secara langsung.
+**Barokahiin** mengubah barang layak dari masyarakat menjadi dana kebaikan. Alurnya:
+
+**Donatur menyerahkan barang → admin mencatat dan mengurasi → barang tampil di website → publik membeli → hasilnya mendanai kegiatan → laporan dipublikasikan.**
 
 **Proposisi nilai:**
-- Untuk **Pemberi**: menyalurkan barang dan makanan lebih dengan cepat, aman, dan tepat sasaran.
-- Untuk **Penerima**: menemukan kebutuhan dekat rumah, gratis atau dengan harga yang jelas.
-- Untuk **komunitas** (masjid, pesantren, RT/RW, komunitas relawan): satu tempat untuk berbagi secara tertib.
+- **Donatur:** barang yang tidak terpakai menjadi manfaat, tanpa repot menjual sendiri, dan identitas dapat dijaga (anonim).
+- **Publik/pembeli:** barang layak dengan harga jelas, foto dan video yang jujur, dan **kejelasan ke mana uangnya pergi**.
+- **Pengelola/admin:** satu tempat kerja untuk data donatur, barang, media, pesanan, dan pencatatan dana.
 
-**Pembeda utama:** Barokahiin bukan sekadar papan iklan. Fokusnya pada **kepastian barang sampai** (serah terima berkode), **keadilan** (Klaim Adil), **keamanan** (lokasi dikaburkan, chat tersamar), dan **ketepatan waktu** untuk makanan (Jalur Segera).
+**Pembeda utama:** kepercayaan. Karena publik membayar untuk tujuan sosial, Barokahiin harus unggul pada **transparansi dana**, **kejujuran kondisi barang**, dan **perlindungan data donatur**.
 
-**Tagline [Usulan]:** "Berbagi yang barokah, dekat dari rumahmu."
+**Tagline [Usulan]:** "Barang yang kamu beli, kebaikan yang kita danai."
 
 ---
 
@@ -48,14 +68,13 @@
 
 **[Asumsi, perlu divalidasi lewat riset]**
 
-1. Orang sering punya barang layak pakai atau makanan lebih, tetapi tidak tahu siapa yang membutuhkan di dekatnya.
-2. Berbagi lewat grup chat atau media sosial berantakan: informasi cepat tenggelam, sulit dicari, dan tidak jelas siapa yang sudah mengambil.
-3. Pemberi khawatir barang gratisnya diambil pihak yang menjualnya kembali, atau Penerima tidak jadi datang.
-4. Penerima kadang malu atau tidak tahu harus meminta ke mana.
-5. Makanan lebih (misalnya dari acara) cepat basi dan butuh penyaluran yang cepat dan tepat waktu.
-6. Sebagian orang ingin melepas barang layak pakai atau makanan lebih dengan harga terjangkau, bukan gratis, tetapi tidak ingin repot memakai marketplace besar.
+1. Banyak orang punya barang layak yang tidak terpakai, tetapi tidak sempat atau tidak mau menjualnya sendiri.
+2. Pengelola kegiatan sosial butuh sumber dana yang berkelanjutan.
+3. Menjual barang donasi lewat media sosial berantakan: foto dan keterangan tidak seragam, sulit dilacak, dan pencatatan dana tidak rapi.
+4. Publik ragu membeli untuk tujuan sosial bila tidak jelas siapa yang menjual, kondisi barang, dan penggunaan dananya.
+5. Donatur khawatir data pribadi dan foto mereka tersebar.
 
-**Yang perlu dibuktikan dalam riset awal:** seberapa sering masalah ini dialami, bagaimana orang menyelesaikannya sekarang, dan apa yang membuat mereka mau atau tidak mau memakai aplikasi khusus.
+**Yang perlu dibuktikan dalam riset awal:** apakah donatur mau menyerahkan barang untuk dijual, apakah publik mau membeli, dan faktor apa yang membuat mereka percaya.
 
 ---
 
@@ -64,44 +83,39 @@
 ### Tujuan
 | # | Tujuan | Ukuran keberhasilan |
 |---|---|---|
-| T1 | Mempertemukan Pemberi dan Penerima dengan cepat dan dekat | Waktu dari posting ke permintaan pertama (TBD) |
-| T2 | Memastikan barang benar-benar sampai ke tangan Penerima | Tingkat serah terima selesai (TBD) |
-| T3 | Membangun rasa aman dan saling percaya | Laporan per 1.000 listing, tingkat no-show (TBD) |
-| T4 | Mudah dipakai semua kalangan | Tingkat tugas utama berhasil pada uji usability (TBD) |
-| T5 | Makanan cepat kedaluwarsa tersalurkan tepat waktu | Persentase makanan Segera yang berhasil diambil sebelum batas (TBD) |
+| T1 | Mengubah barang donasi menjadi dana kegiatan | Dana terkumpul per bulan (TBD) |
+| T2 | Memproses barang dari diterima sampai terbit dengan cepat dan rapi | Waktu dari diterima ke terbit (TBD) |
+| T3 | Menumbuhkan kepercayaan publik | Kunjungan ke halaman transparansi, konversi kunjungan ke permintaan beli (TBD) |
+| T4 | Melindungi data donatur dan pembeli | Nol kebocoran data pribadi; kepatuhan pada checklist privasi |
+| T5 | Admin bekerja efisien | Waktu rata-rata menyelesaikan satu barang di digitaldatagenerus (TBD) |
 
 ### Non-tujuan (tidak dikerjakan di MVP)
-- **Pembayaran di dalam aplikasi** (payment gateway, dompet, escrow). Barang berbayar dibayar **langsung saat serah terima**; aplikasi tidak memproses atau menyimpan uang.
+- **Pembayaran online di dalam website** (payment gateway/keranjang/checkout). Lihat K1.
+- Transaksi antarpengguna (pengguna menjual atau memberi langsung ke pengguna lain). Diarsipkan.
+- Akun login untuk publik dan donatur (lihat K2).
 - Lelang dan tawar-menawar terstruktur.
-- Pengumpulan uang/donasi tunai.
-- Pengiriman barang lewat kurir (hanya ambil langsung).
-- Bahasa daerah (hanya Bahasa Indonesia, tetapi dibangun siap multi-bahasa).
-- Verifikasi identitas yang diwajibkan (hanya disiapkan kerangkanya).
+- Aplikasi native.
+- Bahasa daerah.
 
 ---
 
 ## 4. Pengguna dan peran
 
-### Peran sistem
 | Peran | Hak akses |
 |---|---|
-| **Tamu** | Melihat daftar dan detail barang (tanpa lokasi tepat). Tidak bisa meminta. |
-| **Pengguna** | Satu akun bisa jadi **Pemberi** dan **Penerima**. |
-| **Mitra (Rumah Barokah)** | Pengguna mewakili lembaga/komunitas. Memasang barang dalam jumlah banyak dan mengelola titik ambil (Fase 2). |
-| **Moderator** | Meninjau laporan, mengambil tindakan konten dan akun. |
-| **Admin** | Konfigurasi sistem, kategori, kebijakan, slot sponsor, laporan agregat. |
+| **Publik** | Tanpa login. Melihat katalog, detail barang, kegiatan, dan laporan; mengirim permintaan beli; mengajukan donasi barang. |
+| **Admin** | Login di **digitaldatagenerus**. Mengelola donatur, barang, foto/video, keterangan, pesanan, pencatatan dana, kegiatan, dan konten. |
+| **Donatur** | **Subjek data**, bukan pengguna sistem di MVP **[Usulan]**. Dikabari admin (lihat K2). |
 
-> **Catatan istilah untuk UI/UX:** "Pemberi" dipakai di dokumen ini untuk semua yang memasang barang. Apakah antarmuka perlu membedakan "Pemberi" (gratis) dan "Penjual" (berbayar) adalah keputusan desain (lihat Bagian 11).
+> **RBAC-ready:** peran disimpan sebagai data sehingga nanti bisa dipecah menjadi *Admin Konten*, *Admin Keuangan*, dan *Super Admin* tanpa merombak sistem. MVP memakai **satu peran Admin** sesuai arahan (K9).
 
 ### Persona awal **[Asumsi, bukan hasil riset]**
 | Persona | Tujuan | Kekhawatiran |
 |---|---|---|
-| **Ibu rumah tangga yang merapikan rumah** (Pemberi) | Menyalurkan baju anak yang kekecilan, perabot | Takut dijual kembali, takut orang asing datang ke rumah |
-| **Penyelenggara acara/pengajian** (Pemberi makanan) | Menyalurkan makanan lebih sebelum basi | Waktu sempit, tidak mau repot memilah penerima |
-| **Pemilik usaha kecil/dapur rumahan** (Pemberi berbayar) | Menjual makanan lebih atau barang dengan harga murah ke sekitar | Takut pembeli tidak datang, bayar tidak jelas |
-| **Mahasiswa perantau** (Penerima) | Mencari perabot, buku, makanan gratis atau murah | Malu meminta, tidak punya kendaraan, hemat kuota |
-| **Keluarga yang sedang membutuhkan** (Penerima) | Perlengkapan sekolah dan bayi | Ingin proses yang bermartabat dan tidak dihakimi |
-| **Pengurus masjid/komunitas** (Mitra) | Menyalurkan barang secara tertib ke warga sekitar | Antrean tidak adil, sulit mencatat |
+| **Donatur** (ibu rumah tangga, mahasiswa lulus, pengurus komunitas) | Menyalurkan barang tanpa repot | Data pribadi bocor, barang dijual terlalu murah, tidak tahu hasilnya |
+| **Pembeli publik** | Mendapat barang layak dengan harga wajar sambil berbuat baik | Barang tidak sesuai foto, penipuan pembayaran, dana tidak jelas |
+| **Admin konten** | Mencatat dan menerbitkan barang dengan cepat | Banyak langkah, foto/video sulit diunggah dari ponsel |
+| **Penanggung jawab kegiatan/keuangan** | Mencatat penjualan dan melaporkan penggunaan dana | Catatan tidak rapi, dana tidak cocok dengan rekening |
 
 > **Untuk tim UI/UX:** validasi persona ini lewat wawancara sebelum dijadikan dasar keputusan desain.
 
@@ -111,95 +125,84 @@
 
 | Istilah | Arti |
 |---|---|
-| **Barokah** | Satu barang/paket yang ditawarkan (satu listing). |
-| **Pemberi** | Pengguna yang memasang barang (gratis atau berbayar). |
-| **Penerima** | Pengguna yang meminta dan mengambil barang. |
-| **Tipe harga** | **Gratis** atau **Berbayar** (harga tetap dalam Rupiah). _Seikhlasnya_ menyusul di Fase 2. |
-| **Klaim** | Permintaan Penerima atas sebuah Barokah. |
-| **Titik Ambil** | Lokasi pengambilan: alamat Pemberi atau titik aman yang disepakati. |
-| **Jalur Segera** | Bagian khusus untuk makanan yang cepat kedaluwarsa (lihat 5.2). |
-| **Rumah Barokah** | Mitra komunitas/lembaga yang menyediakan titik ambil dan mengelola barang (Fase 2). |
-| **Serah terima** | Proses pemberian dan pengambilan, dikonfirmasi dengan kode. |
-| **Sahabat Berbagi** | Mode anonim: Pemberi tampil tanpa nama di publik. Label tampilan bisa dikonfigurasi, misalnya "Hamba Allah". |
+| **Donatur** | Orang yang menyerahkan barang untuk dijual demi kegiatan. |
+| **Barang** | Satu barang/paket yang dikelola dan dijual (disebut juga *Barokah* di antarmuka bila UI/UX setuju). |
+| **Kurasi** | Pemeriksaan kondisi, foto/video, keterangan, dan penetapan harga oleh admin sebelum terbit. |
+| **Katalog** | Daftar barang terbit di storefront. |
+| **Permintaan beli** | Pengajuan publik untuk membeli barang; diproses admin. |
+| **Kegiatan** | Kegiatan yang didanai dari hasil penjualan. |
+| **Laporan dana** | Rincian dana terkumpul dan penggunaannya untuk sebuah kegiatan. |
+| **Sahabat Berbagi** | Label donatur anonim di publik. Teks dapat dikonfigurasi, misalnya "Hamba Allah". |
 
 ### 5.1 Kategori barang **[Usulan]**
-1. **Makanan Kemasan** (punya tanggal kedaluwarsa)
-2. **Makanan Siap Saji** (dimasak/disiapkan, batas konsumsi pendek)
-3. Minuman
-4. Pakaian dan perlengkapan ibadah
-5. Buku, Al-Qur'an, kitab, dan bahan bacaan
-6. Perabot dan elektronik layak pakai
-7. Perlengkapan bayi dan anak
-8. Perlengkapan sekolah dan kuliah
-9. Alat dan perkakas
-10. Alat bantu kesehatan non-obat (kursi roda, tongkat, dsb.)
-11. Tanaman dan bibit
-12. Lainnya
+Pakaian dan perlengkapan ibadah, buku dan bahan bacaan, perabot, elektronik layak pakai, perlengkapan bayi dan anak, perlengkapan sekolah, alat dan perkakas, tanaman dan bibit, lainnya. Kategori dikelola admin. **Makanan dan barang cepat kedaluwarsa tidak disarankan di storefront MVP** karena risiko dan penanganannya berbeda (K6).
 
-Kategori dikelola admin (bisa ditambah tanpa mengubah kode). Kebijakan barang terlarang ada di [Bagian 15](#15-kepercayaan-keamanan-dan-moderasi).
-
-### 5.2 Jalur Segera (makanan cepat kedaluwarsa)
-Pemilik produk meminta makanan dengan waktu kedaluwarsa cepat **dipisahkan**. Rancangannya **[Usulan]**:
-
-| Jenis | Masuk Jalur Segera bila |
-|---|---|
-| **Makanan Siap Saji** | **Selalu** (batas konsumsi dalam jam) |
-| **Makanan Kemasan** | Sisa masa layak ≤ **N hari** (usulan awal N = 3, bisa diatur admin, TBD) |
-
-Ciri Jalur Segera: tampil di bagian/tab terpisah, hitung mundur, urutan berdasarkan sisa waktu dan jarak, aturan lebih ketat (waktu dibuat dan batas konsumsi wajib), respons klaim lebih cepat, dan peringatan keamanan pangan.
+### 5.2 Siklus hidup barang
+Lihat diagram di Bagian 9.4. Ringkasnya: **Diajukan → Diterima → Dikurasi → Siap terbit → Terbit → Dipesan → Terjual**, dengan cabang **Ditolak** dan **Ditarik**.
 
 ---
 
-## 6. Lingkup
+## 6. Lingkup dan arsitektur
+
+### Dua frontend, satu backend
+
+```mermaid
+flowchart LR
+    D["Donatur / calon donatur"] -->|ajukan donasi barang| S
+    P["Publik / pembeli"] --> S["Storefront Barokahiin<br/>Frontend 2 (publik)"]
+    A["Admin"] --> DG["digitaldatagenerus<br/>Frontend 1 (back-office)"]
+    S -->|"API publik (baca terbatas + form)"| B["Backend API"]
+    DG -->|"API admin (terautentikasi)"| B
+    B --> DB[("Database")]
+    B --> M[("Penyimpanan foto dan video")]
+```
+
+| | **Frontend 1: digitaldatagenerus** | **Frontend 2: Storefront Barokahiin** |
+|---|---|---|
+| **Fungsi** | Mengelola data user (donatur) dan barang-barangnya: catat, kurasi, unggah foto/video, keterangan, harga, status, pesanan, dana, kegiatan, konten | Menampilkan barang yang dijual, kegiatan, dan transparansi dana |
+| **Pengguna** | Admin | Publik |
+| **Akses** | Login | Terbuka |
+| **Prioritas desain** | Efisiensi, akurasi data, aman | Kepercayaan, cerita, kecepatan, mudah dibagikan |
+| **Data** | Semua data (termasuk data pribadi donatur) | **Hanya** data barang terbit dan agregat; **tidak ada** data donatur |
+
+> **Perlu konfirmasi (K3):** apakah `digitaldatagenerus` sudah ada dan akan dipakai (dengan backend/API-nya), atau dibangun baru sebagai bagian proyek ini. Jawabannya menentukan apakah backend baru dibuat atau API yang ada diperluas.
 
 ### Cakupan geografis
-- **Fokus awal (pilot): Bandung dan sekitarnya.** **[Asumsi]** mencakup Kota Bandung, Kota Cimahi, Kabupaten Bandung, dan Kabupaten Bandung Barat. Batas final ditentukan pemilik produk (lihat Bagian 18).
-- **Teknis:** aplikasi tetap dapat diakses dari seluruh Indonesia dan data wilayah disiapkan nasional, supaya tidak perlu dibangun ulang saat meluas. Di luar area pilot, tampilkan pesan ramah: "Barokahiin belum ramai di wilayahmu. Jadilah yang pertama berbagi."
-- Pencocokan bersifat **hiperlokal** (berdasarkan jarak), karena barang diambil langsung.
-- Hierarki wilayah: Provinsi → Kabupaten/Kota → Kecamatan → Kelurahan/Desa. Gunakan sumber data wilayah resmi (misalnya kode wilayah Kemendagri/BPS) dan kunci versinya.
-- **Zona waktu:** Bandung berada di WIB. Sistem tetap menyimpan waktu dalam UTC dan siap menampilkan WIB/WITA/WIT untuk perluasan.
+- **Pengumpulan barang dan pilot: Bandung dan sekitarnya** **[Asumsi]** (Kota Bandung, Kota Cimahi, Kab. Bandung, Kab. Bandung Barat; batas final di K7).
+- Storefront **dapat diakses dari seluruh Indonesia**. Apakah barang bisa dikirim ke luar Bandung adalah keputusan terbuka (K4).
 
 ### Platform
-- **PWA mobile-first** (keputusan pemilik produk) + panel admin web.
-- **[Asumsi]** Banyak pengguna memakai Android kelas menengah ke bawah dengan koneksi yang tidak stabil. Desain dan performa harus mengakomodasi ini (Bagian 14).
-- Aplikasi native dipertimbangkan setelah ada data.
+- **Storefront:** web publik, **mobile-first**, dirender di server/statik agar cepat dan mudah ditemukan mesin pencari. PWA bersifat opsional.
+- **digitaldatagenerus:** web aplikasi responsif, **ramah ponsel** karena admin banyak mengunggah foto/video dari ponsel.
 
 ### Bahasa
-Bahasa Indonesia. Semua teks ditaruh di berkas terjemahan (i18n) agar mudah menambah bahasa.
+Bahasa Indonesia. Semua teks dalam berkas terjemahan (i18n).
 
 ---
 
-## 7. Saran fitur unggulan (pembeda Barokahiin)
+## 7. Saran fitur unggulan
 
-Ini **usulan** untuk membedakan Barokahiin dari berbagi lewat grup chat atau marketplace biasa. Urutan berdasarkan dampak terhadap kepercayaan dan keberhasilan serah terima. _Usaha_: S kecil, M sedang, L besar.
+Ini **usulan** untuk membedakan Barokahiin dari berjualan lewat media sosial. Urutan berdasarkan dampak pada kepercayaan dan hasil dana. _Usaha_: S kecil, M sedang, L besar.
 
 | # | Fitur unggulan | Masalah yang dijawab | Ringkasan | Usaha | Fase |
 |---|---|---|---|---|---|
-| 1 | **Radar Barokah** | Sulit menemukan barang dekat | Daftar dan peta sekitar, filter kategori/harga/jarak. Lokasi publik dikaburkan | M | MVP |
-| 2 | **Jalur Segera** | Makanan cepat basi | Bagian terpisah untuk makanan siap saji dan kemasan dengan masa layak pendek, hitung mundur, kabari saya | M | MVP |
-| 3 | **Gratis dan Berbayar yang Jelas** | Orang ragu soal harga dan cara bayar | Label tipe harga yang jelas, harga **terkunci** saat klaim diterima, bayar di tempat saat serah terima, tanpa uang diproses aplikasi | M | MVP |
-| 4 | **Klaim Adil** | Pemberi bingung memilih; penimbun | Mode *Siapa cepat* / *Pemberi memilih*, batas klaim aktif untuk barang gratis | M | MVP (Undian di Fase 2) |
-| 5 | **Serah terima berkode** | Barang "hilang di jalan", sengketa | Kode 6 digit/QR dari Penerima dikonfirmasi Pemberi; untuk barang berbayar juga mencatat "pembayaran diterima" | S | MVP |
-| 6 | **Sahabat Berbagi** (anonim) | Ingin menjaga privasi dan niat | Nama tampil anonim di publik; identitas tetap dikenal sistem | S | MVP |
-| 7 | **Kerangka kepercayaan bertingkat** | Akun palsu, penipuan | Level kepercayaan dan tabel verifikasi **disiapkan**, belum diwajibkan. Lencana dari riwayat serah terima, bukan bintang ulasan | M | MVP (kerangka) |
-| 8 | **Chat tersamar** | Bocornya nomor pribadi | Chat per klaim; nomor HP tidak tampil kecuali dibagikan dengan persetujuan | M | MVP |
-| 9 | **Hemat data dan tahan koneksi buruk** | Jaringan tidak merata | Kompresi gambar, tampilan ringan, percobaan ulang, mode hemat data | M | MVP |
-| 10 | **Mode Komunitas Muslim (opsional)** | Kebutuhan khusus komunitas | Label anonim "Hamba Allah", kategori perlengkapan ibadah, filter info halal (diisi Pemberi), dan nanti jendela ambil ramah waktu salat. Bersifat **opsional**, bukan default | S–M | MVP (label, kategori, filter), Fase 2 (jendela salat) |
-| 11 | **Dukungan Sponsor yang Transparan** | Pembiayaan operasional | Slot "Didukung oleh" berlabel jelas; sponsor **tidak** memengaruhi urutan hasil dan **tidak** menerima data pengguna | S | MVP (dasar) |
-| 12 | **Butuh Barokah** (papan kebutuhan) | Daerah sepi pemberi; Penerima malu bertanya | Penerima memposting kebutuhan (boleh anonim di publik), Pemberi memenuhi | M | Fase 2 |
-| 13 | **Seikhlasnya** | Ingin berbagi dengan kontribusi sukarela | Tipe harga ketiga: Penerima memberi seikhlasnya langsung saat serah terima | S | Fase 2 |
-| 14 | **Rumah Barokah** (mitra komunitas) | Keamanan bertemu orang asing, penyaluran skala besar | Masjid, komunitas, RT/RW jadi titik ambil aman dan penyalur terverifikasi | L | Fase 2 |
-| 15 | **Jejak Kebaikan** (dampak pribadi) | Motivasi berkelanjutan | Ringkasan pribadi. **Tanpa papan peringkat publik** agar tidak jadi ajang pamer | S | Fase 2 |
-| 16 | **Bantuan pintar (AI)** | Posting lama, barang terlarang lolos | Saran kategori/judul dari foto, deteksi barang terlarang untuk membantu moderator | L | Fase 3 |
-| 17 | **Pembayaran dalam aplikasi** | Praktis dan aman bagi sebagian orang | Menunggu keputusan bisnis dan kepatuhan | L | Fase 3 (opsional) |
+| 1 | **Transparansi Dana** | Publik ragu ke mana uang pergi | Halaman publik: dana terkumpul, kegiatan yang didanai, laporan penggunaan, dokumentasi. Ini **mesin kepercayaan** utama | M | MVP |
+| 2 | **Cerita Barang** | Barang bekas terasa biasa saja | Galeri foto multi-sudut, video singkat, keterangan jujur (termasuk kekurangan), dan kisah singkat bila donatur berkenan | M | MVP |
+| 3 | **Kurasi terstandar** | Kualitas dan keterangan tidak seragam | Checklist kurasi, grade kondisi, syarat data lengkap sebelum terbit | S | MVP |
+| 4 | **Pesan Mudah** | Pembeli bingung cara memesan | Form permintaan beli + tautan WhatsApp berisi pesan otomatis; barang **dipesan** dengan batas waktu bayar | M | MVP |
+| 5 | **Status dan jejak barang** | Pembeli rebutan, informasi kedaluwarsa | Tersedia/Dipesan/Terjual yang selalu mutakhir; arsip **"Sudah Terjual"** menunjukkan dampak | S | MVP (arsip di Fase 2) |
+| 6 | **Donatur anonim secara default** | Donatur takut identitas tersebar | Publik hanya melihat "Sahabat Berbagi/Hamba Allah"; data donatur tidak pernah ke API publik | S | MVP |
+| 7 | **Berbagi mudah dan SEO** | Pertumbuhan organik | Pratinjau cantik saat tautan dibagikan (WhatsApp, media sosial), URL rapi, data terstruktur | S | MVP |
+| 8 | **Hemat data dan cepat** | Koneksi tidak merata | Gambar responsif, video dimuat malas, halaman statis | M | MVP |
+| 9 | **Barang ↔ Kegiatan** | Pembeli ingin tahu dampak pembeliannya | Barang dapat ditautkan ke kegiatan: "Pembelianmu mendanai ..." dengan progres target dana | M | Fase 2 |
+| 10 | **Kabar ke donatur** | Donatur tidak tahu barangnya terjual | Templat pesan "barangmu terjual dan mendanai kegiatan X" (kirim manual dulu, otomatis nanti) | S | Fase 2 |
+| 11 | **Alur penjemputan barang** | Mengumpulkan barang dari donatur merepotkan | Jadwal jemput, petugas, catatan lokasi, dan checklist serah terima di digitaldatagenerus | M | Fase 2 |
+| 12 | **Dukungan sponsor** | Biaya operasional | Slot "Didukung oleh" berlabel jelas, tanpa memengaruhi urutan katalog | S | Fase 2 |
+| 13 | **Pembayaran online** | Praktis bagi sebagian pembeli | Checkout dan payment gateway; menunggu keputusan bisnis dan kepatuhan | L | Fase 3 (opsional) |
+| 14 | **Paket Barokah (bundel)** | Barang kecil sulit laku | Beberapa barang dijual sebagai satu paket | S | Fase 3 |
+| 15 | **Bantuan pintar (AI)** | Menulis keterangan lama | Saran judul/keterangan dari foto yang **diperiksa admin** | L | Fase 3 |
 
-**Rekomendasi fokus MVP:** fitur 1–9, 10 (versi dasar), dan 11 (versi dasar).
-
-### Strategi cold start di Bandung **[Usulan]**
-1. Mulai dari **komunitas yang sudah berkumpul**: area kampus dan kos-kosan, komunitas relawan, masjid dan pengajian, lingkungan RT/RW.
-2. Isi awal dengan **Pemberi yang dibina langsung** (misalnya penyelenggara acara dan dapur rumahan) agar Radar tidak kosong saat pengguna pertama datang.
-3. Pantau satu kecamatan sebagai "wilayah percontohan" sebelum memperluas, dan ukur metrik pencocokan di sana.
-4. Saat area masih sepi, tampilkan ajakan jadi Pemberi pertama dan perluas radius otomatis dengan label jarak.
+**Rekomendasi fokus MVP:** fitur 1–8. Itulah inti "barang terkurasi, dijual dengan jujur, dana dilaporkan terbuka".
 
 ---
 
@@ -207,416 +210,398 @@ Ini **usulan** untuk membedakan Barokahiin dari berbagi lewat grup chat atau mar
 
 | Fase | Isi | Tujuan fase |
 |---|---|---|
-| **MVP (P0)** | Akun, posting barang (gratis/berbayar), Jalur Segera, penelusuran, klaim (2 mode), chat, serah terima berkode, notifikasi dasar, laporan dan moderasi dasar, slot sponsor dasar, kerangka verifikasi, panel admin dasar | Membuktikan barang benar-benar berpindah tangan di Bandung |
-| **Fase 2 (P1)** | Butuh Barokah, Seikhlasnya, Rumah Barokah, mode Undian, Jejak Kebaikan, jendela ambil ramah salat, verifikasi aktif (bila diputuskan), notifikasi WhatsApp, manajemen sponsor lengkap | Skala dan kepercayaan |
-| **Fase 3 (P2)** | Bantuan AI, bahasa daerah, pembayaran dalam aplikasi (opsional), pengiriman opsional, aplikasi native | Efisiensi dan jangkauan |
+| **MVP (P0)** | digitaldatagenerus: login admin, donatur, barang, media, kurasi, pesanan, pencatatan penjualan, kegiatan dan laporan dasar, konten statis. Storefront: katalog, detail, permintaan beli, form donasi barang, kegiatan dan transparansi, dampak ringkas, SEO | Membuktikan barang donasi bisa dijual dan dana tercatat transparan di Bandung |
+| **Fase 2 (P1)** | Barang↔Kegiatan, kabar ke donatur, penjemputan, alokasi dan rekonsiliasi dana, 2FA admin (wajib sebelum publik), sponsor, arsip "Sudah Terjual", peran admin terpisah | Skala, kepercayaan, efisiensi |
+| **Fase 3 (P2)** | Pembayaran online, bundel, AI, pengiriman, perluasan wilayah | Pertumbuhan |
 
 ---
 
-## 9. User flow utama
+## 9. Alur utama
 
-### 9.1 Pemberi memasang barang
+### 9.1 Pengumpulan dan publikasi barang
 ```mermaid
 flowchart TD
-    A[Buka Barokahiin] --> B{Sudah masuk?}
-    B -- Belum --> C[Masuk dengan OTP HP atau Google]
-    C --> D[Tekan Bagikan Barokah]
-    B -- Sudah --> D
-    D --> E[Unggah 1-5 foto]
-    E --> F[Isi judul, kategori, kondisi, jumlah]
-    F --> G{Tipe harga}
-    G -- Gratis --> H[Pilih mode klaim dan jendela ambil]
-    G -- Berbayar --> G2[Isi harga Rupiah] --> H
-    H --> H2{Kategori makanan?}
-    H2 -- Ya --> H3[Isi waktu dibuat dan batas konsumsi]
-    H2 -- Tidak --> I
-    H3 --> I[Atur Titik Ambil dan patokan]
-    I --> J[Pratinjau + sistem menentukan Jalur Segera]
-    J --> K[Publikasikan]
-    K --> L[Menunggu permintaan]
+    A["Donatur mengajukan atau menyerahkan barang"] --> B["Admin mencatat donatur dan barang di digitaldatagenerus"]
+    B --> C["Barang diterima: diantar atau dijemput"]
+    C --> D["Kurasi: cek kondisi, foto, video, keterangan, harga"]
+    D --> E{"Layak dijual?"}
+    E -- Tidak --> F["Ditolak atau dialihkan: catat alasan, kabari donatur"]
+    E -- Ya --> G["Pratinjau tampilan storefront"]
+    G --> H["Terbitkan"]
+    H --> I["Barang tampil di storefront"]
 ```
 
-### 9.2 Penerima mengambil barang
+### 9.2 Pembelian oleh publik
 ```mermaid
 flowchart TD
-    A[Buka Radar Barokah atau Jalur Segera] --> B[Telusuri atau filter]
-    B --> C[Lihat detail barang dan tipe harga]
-    C --> D[Ajukan permintaan + pesan singkat]
-    D --> E{Mode klaim}
-    E -- Siapa cepat --> F[Langsung diterima jika stok ada]
-    E -- Pemberi memilih --> G[Menunggu keputusan Pemberi]
-    G -- Diterima --> F
-    G -- Ditolak --> Z[Pemberitahuan ditolak]
-    F --> H[Chat atur waktu; lokasi tepat dibuka; harga terkunci]
-    H --> I[Ambil barang; bayar di tempat bila berbayar]
-    I --> J[Penerima tunjukkan kode; Pemberi memasukkan kode]
-    J --> K[Selesai: ucapan terima kasih]
+    A["Publik menelusuri katalog"] --> B["Buka detail barang"]
+    B --> C{"Tersedia?"}
+    C -- Tidak --> X["Lihat barang serupa"]
+    C -- Ya --> D["Kirim permintaan beli atau pesan via WhatsApp"]
+    D --> E["Admin menerima di antrean"]
+    E --> F["Admin konfirmasi: barang Dipesan + batas waktu bayar"]
+    F --> G["Pembeli membayar ke rekening resmi"]
+    G --> H["Admin mencatat pembayaran"]
+    H --> I["Barang diserahkan atau dikirim"]
+    I --> J["Terjual: dana tercatat dan masuk laporan kegiatan"]
 ```
 
-### 9.3 Status Barokah (listing)
+### 9.3 Donasi dan penggunaan dana
 ```mermaid
-stateDiagram-v2
-    [*] --> draft
-    draft --> active: publikasi
-    active --> reserved: seluruh stok sudah dipesan
-    reserved --> active: klaim batal atau no-show
-    reserved --> completed: semua serah terima selesai
-    active --> expired: lewat batas waktu
-    active --> cancelled: dibatalkan Pemberi
-    active --> removed: dihapus moderator
-    reserved --> removed: dihapus moderator
-    completed --> [*]
-    expired --> [*]
-    cancelled --> [*]
-    removed --> [*]
+flowchart LR
+    A["Penjualan tercatat"] --> B["Dana terkumpul"]
+    B --> C["Dialokasikan ke kegiatan"]
+    C --> D["Kegiatan berjalan + dokumentasi"]
+    D --> E["Laporan penggunaan dana dipublikasikan"]
 ```
 
-### 9.4 Status Klaim
+### 9.4 Status barang
 ```mermaid
 stateDiagram-v2
-    [*] --> requested
-    requested --> accepted: Pemberi menerima
-    requested --> declined: Pemberi menolak
-    requested --> cancelled: Penerima membatalkan
-    requested --> expired: tidak direspons atau stok habis
-    accepted --> completed: kode serah terima dikonfirmasi
-    accepted --> cancelled: dibatalkan salah satu pihak
-    accepted --> no_show: tidak datang melewati jendela ambil
+    [*] --> diajukan
+    diajukan --> diterima: barang diterima
+    diajukan --> ditolak: tidak layak atau dibatalkan
+    diterima --> dikurasi: mulai kurasi
+    dikurasi --> siap_terbit: data lengkap
+    siap_terbit --> terbit: publikasi
+    terbit --> dipesan: pesanan dikonfirmasi
+    dipesan --> terbit: pesanan batal atau kedaluwarsa
+    dipesan --> terjual: pembayaran dicatat dan barang diserahkan
+    terbit --> ditarik: ditarik dari storefront
+    ditarik --> terbit: terbitkan lagi
+    terjual --> [*]
+    ditolak --> [*]
+```
+
+### 9.5 Status permintaan beli
+```mermaid
+stateDiagram-v2
+    [*] --> diajukan
+    diajukan --> dikonfirmasi: admin konfirmasi, barang dipesan
+    diajukan --> ditolak: admin menolak
+    diajukan --> kedaluwarsa: tidak diproses
+    dikonfirmasi --> dibayar: admin catat pembayaran
+    dikonfirmasi --> batal: dibatalkan
+    dikonfirmasi --> kedaluwarsa: lewat batas bayar
+    dibayar --> selesai: barang diserahkan atau dikirim
 ```
 
 ---
 
 ## 10. Kebutuhan fungsional
 
-Prioritas: **P0** = MVP, **P1** = Fase 2, **P2** = Fase 3. Setiap kebutuhan punya kriteria penerimaan (KP) sebagai dasar desain, pengembangan, dan uji.
+Prioritas: **P0** = MVP, **P1** = Fase 2, **P2** = Fase 3. Setiap kebutuhan punya kriteria penerimaan (KP).
 
-### 10.1 Akun dan profil (AUTH)
+### 10.1 Frontend 1: digitaldatagenerus (admin)
 
-| ID | Kebutuhan | P | Kriteria penerimaan |
-|---|---|---|---|
-| AUTH-01 | Masuk dengan OTP nomor HP | P0 | OTP berlaku terbatas; ada batas percobaan; nomor HP tidak tampil ke pengguna lain |
-| AUTH-02 | Masuk dengan Google | P0 | Akun yang sama tidak terduplikasi bila email/HP sama |
-| AUTH-03 | Profil dasar: nama tampil, foto (opsional), wilayah | P0 | Nama tampil boleh bukan nama asli; wilayah dipilih sampai kecamatan |
-| AUTH-04 | Mode Sahabat Berbagi (anonim publik) | P0 | Bila aktif, nama dan foto tidak tampil di listing/chat publik; moderator tetap bisa melihat identitas |
-| AUTH-05 | Level kepercayaan: L0 tamu, L1 HP terverifikasi | P0 | L0 hanya melihat; L1 boleh memposting dan meminta |
-| AUTH-06 | **Kerangka verifikasi (disiapkan, tidak diwajibkan)** | P0 (kerangka) | Model data verifikasi, status, dan *feature flag* tersedia; antarmuka tempat verifikasi disiapkan tetapi **tidak ditampilkan/diwajibkan**; tidak ada pengumpulan dokumen identitas di MVP |
-| AUTH-07 | Hapus akun dan data | P0 | Pengguna bisa mengajukan; data pribadi dihapus/dianonimkan sesuai kebijakan retensi |
-| AUTH-08 | Pengaturan notifikasi | P0 | Bisa mengatur jenis notifikasi per kanal |
-
-### 10.2 Memasang barang (LST)
+**Akses dan keamanan (ADM)**
 
 | ID | Kebutuhan | P | Kriteria penerimaan |
 |---|---|---|---|
-| LST-01 | Buat listing: judul, deskripsi, kategori, kondisi, jumlah, 1–5 foto | P0 | Validasi wajib/opsional jelas; foto dikompresi sebelum unggah; draf tersimpan otomatis |
-| LST-02 | Mode klaim: *Siapa cepat* atau *Pemberi memilih* | P0 | Mode terkunci setelah ada klaim pertama |
-| LST-03 | Jendela ambil (tanggal dan jam mulai–selesai) | P0 | Zona waktu mengikuti lokasi; wajib untuk makanan |
-| LST-04 | **Atribut Makanan Kemasan**: tanggal kedaluwarsa, bahan/alergen, info halal (diisi Pemberi) | P0 | Tanggal kedaluwarsa wajib dan tidak boleh sudah lewat; info halal berlabel "diisi Pemberi, tidak diverifikasi" |
-| LST-05 | **Atribut Makanan Siap Saji**: waktu dibuat/dimasak, **batas konsumsi**, bahan/alergen, info halal | P0 | Batas konsumsi wajib; jendela ambil tidak boleh melewati batas konsumsi; tampil peringatan keamanan pangan |
-| LST-06 | Titik Ambil: pilih lokasi di peta + patokan teks (RT/RW, ciri bangunan) | P0 | Lokasi publik **dikaburkan**; alamat tepat hanya terbuka setelah klaim diterima |
-| LST-07 | Edit, tutup lebih awal, perpanjang, duplikat listing | P0 | Perubahan penting memberi tahu Penerima yang sudah diterima; **harga tidak bisa diubah** untuk klaim yang sudah diterima |
-| LST-08 | Batas posting harian dan batas listing aktif per pengguna | P0 | Nilai bisa diatur admin (konfigurasi) |
-| LST-09 | Posting massal untuk Mitra | P1 | Impor berkas atau form berulang |
-| LST-10 | Mode Undian | P1 | Pemilihan acak dari peminta saat batas waktu; hasil dapat diaudit |
+| ADM-01 | Login admin | P0 | Kata sandi di-hash; batas percobaan; sesi berakhir otomatis |
+| ADM-02 | Peran disimpan sebagai data (RBAC-ready); MVP satu peran Admin | P0 | Menambah peran baru tidak perlu mengubah kode inti |
+| ADM-03 | Audit log tindakan sensitif (ubah harga, ubah status, catat pembayaran, ekspor, hapus) | P0 | Mencatat siapa, kapan, apa, nilai sebelum/sesudah |
+| ADM-04 | Kelola akun admin (undang, nonaktifkan) | P0 | Akun nonaktif tidak bisa masuk |
+| ADM-05 | Autentikasi dua langkah (2FA) | P1 | **Wajib aktif sebelum peluncuran publik** karena admin memegang data pribadi dan pencatatan dana |
 
-### 10.3 Harga dan pembayaran (PRC)
+**Donatur (DON)**
 
 | ID | Kebutuhan | P | Kriteria penerimaan |
 |---|---|---|---|
-| PRC-01 | Tipe harga **Gratis** atau **Berbayar** | P0 | Label tipe harga tampil jelas di kartu, detail, dan chat; tidak bisa disalahartikan |
-| PRC-02 | Harga berbayar dalam Rupiah bilangan bulat | P0 | Tampil format Indonesia ("Rp 25.000"); harga wajib > 0 untuk berbayar |
-| PRC-03 | **Harga terkunci** saat klaim diterima | P0 | Perubahan harga pada listing tidak memengaruhi klaim yang sudah diterima |
-| PRC-04 | **Bayar di tempat saat serah terima**; aplikasi tidak memproses uang | P0 | Layar detail dan klaim menjelaskan cara bayar dan mengingatkan "periksa barang sebelum membayar" |
-| PRC-05 | Konfirmasi "pembayaran sudah diterima" oleh Pemberi saat serah terima barang berbayar | P0 | Tercatat sebagai bagian konfirmasi serah terima; tidak menyimpan data rekening/kartu |
-| PRC-06 | Filter dan urutan berdasarkan tipe harga dan harga | P0 | Bisa memilih Gratis saja, Berbayar saja, atau semuanya |
-| PRC-07 | Laporan khusus: harga tidak sesuai, minta bayar di muka, barang tidak sesuai deskripsi | P0 | Jalur pelaporan terpisah dengan konteks klaim |
-| PRC-08 | Tipe harga **Seikhlasnya** | P1 | Tidak ada nominal wajib; dibayar langsung saat serah terima |
-| PRC-09 | Pembayaran dalam aplikasi | P2 | Menunggu keputusan bisnis dan kepatuhan; **tidak dikerjakan** sebelum diputuskan |
+| DON-01 | Catat donatur: nama, kontak, wilayah, preferensi anonim, catatan | P0 | Validasi format kontak; peringatan bila kontak sudah ada (duplikat) |
+| DON-02 | **Catat persetujuan donatur**: izin menjual barang dan menampilkan foto/video | P0 | **Barang tidak dapat diterbitkan tanpa persetujuan tercatat** (tanggal, bentuk bukti) |
+| DON-03 | Anonim default: publik melihat label Sahabat Berbagi | P0 | Label dapat dikonfigurasi; nama donatur tidak pernah keluar ke API publik |
+| DON-04 | Riwayat donasi per donatur | P0 | Daftar barang dan statusnya |
+| DON-05 | Cari, filter, urutkan donatur | P0 | Pencarian toleran salah ketik ringan |
+| DON-06 | Hapus/anonimkan data donatur atas permintaan | P0 | Catatan penjualan tetap utuh (tanpa data pribadi) |
+| DON-07 | Templat kabar ke donatur (diterima, terjual, kegiatan) | P1 | Dikirim manual dulu; riwayat tercatat |
+| DON-08 | Ekspor data donatur | P1 | Dibatasi peran dan tercatat di audit log |
 
-### 10.4 Jalur Segera (URG)
-
-| ID | Kebutuhan | P | Kriteria penerimaan |
-|---|---|---|---|
-| URG-01 | Klasifikasi otomatis ke Jalur Segera berdasarkan aturan 5.2 | P0 | Ambang batas dapat diatur admin; listing berpindah otomatis saat mendekati batas |
-| URG-02 | Tab/bagian terpisah "Segera" di Radar | P0 | Urut berdasarkan sisa waktu lalu jarak; menampilkan hitung mundur dan label kategori (Siap Saji/Kemasan) |
-| URG-03 | Hitung mundur dan penutupan otomatis | P0 | Tampil sisa waktu akurat berdasarkan jam server; listing otomatis ditutup saat batas lewat |
-| URG-04 | Respons klaim lebih cepat | P0 | Klaim yang belum diputuskan kedaluwarsa otomatis dalam waktu pendek (nilai diatur admin, TBD) |
-| URG-05 | "Kabari saya" untuk makanan Segera di wilayah pilihan | P1 | Notifikasi sesuai wilayah dan kategori; bisa dimatikan |
-| URG-06 | Peringatan keamanan pangan di detail dan saat klaim | P0 | Muncul untuk semua makanan; tidak bisa dilewati tanpa dilihat sebelum klaim |
-
-### 10.5 Menemukan barang (DSC)
+**Barang (ITM)**
 
 | ID | Kebutuhan | P | Kriteria penerimaan |
 |---|---|---|---|
-| DSC-01 | Daftar "Di sekitar saya" dengan radius dan jarak perkiraan | P0 | Berfungsi dengan izin lokasi **atau** pilihan wilayah manual |
-| DSC-02 | Tampilan peta dengan penanda dikaburkan | P0 | Ada alternatif daftar bagi yang tidak memakai peta |
-| DSC-03 | Filter: kategori, kondisi, jarak, tipe harga, "berakhir segera", info halal | P0 | Filter bisa dihapus satu per satu |
-| DSC-04 | Pencarian kata kunci | P0 | Toleran salah ketik ringan; hasil urut relevansi atau jarak |
-| DSC-05 | Detail barang: foto, info, jarak, tipe harga, status, profil singkat Pemberi, tombol aksi | P0 | Menampilkan status dengan jelas (tersedia/dipesan/selesai/kedaluwarsa) |
-| DSC-06 | Simpan/favorit dan peringatan wilayah-kategori | P1 | Notifikasi bila ada barang baru yang sesuai |
-| DSC-07 | Tampilan saat area sepi atau di luar area pilot | P0 | Ajakan jadi Pemberi pertama dan perluas radius otomatis dengan label jarak |
+| ITM-01 | Catat barang terhubung donatur: nama internal, kategori, jumlah, kondisi, catatan internal, cara terima (diantar/dijemput) | P0 | Satu donatur dapat memiliki banyak barang |
+| ITM-02 | **Kode barang unik** yang terbaca manusia (mis. `BRK-2026-0001`) | P0 | Tidak berulang; tampil di daftar dan label fisik |
+| ITM-03 | Isi data publik: judul, keterangan, kondisi/grade, ukuran/spesifikasi, **kekurangan**, harga | P0 | Wajib lengkap sebelum bisa Siap terbit |
+| ITM-04 | Checklist kurasi (kebersihan, fungsi, kelengkapan, foto memadai) | P0 | Centang tersimpan dan dapat dilihat di riwayat |
+| ITM-05 | Status siklus hidup (9.4) dengan transisi tervalidasi | P0 | Transisi yang tidak sah ditolak; setiap perpindahan tercatat |
+| ITM-06 | Pratinjau seperti tampilan storefront | P0 | Pratinjau memakai komponen tampilan yang sama |
+| ITM-07 | Terbit dan tarik | P0 | Terbit hanya jika syarat lengkap; penarikan segera menghilangkan dari storefront (waktu rambat TBD) |
+| ITM-08 | Cari, filter (status, kategori, donatur, tanggal), urutkan | P0 | Daftar memakai paginasi |
+| ITM-09 | Tautkan barang ke kegiatan | P1 | Opsional; tampil di detail barang |
+| ITM-10 | Aksi massal (ubah status, kategori) | P1 | Konfirmasi sebelum dijalankan |
+| ITM-11 | Duplikasi barang, lokasi penyimpanan fisik | P1 | |
 
-### 10.6 Klaim dan serah terima (CLM)
-
-| ID | Kebutuhan | P | Kriteria penerimaan |
-|---|---|---|---|
-| CLM-01 | Ajukan klaim + pesan singkat + jumlah | P0 | Tidak bisa klaim barang sendiri; tidak bisa klaim ganda pada listing yang sama |
-| CLM-02 | Batas klaim aktif per pengguna | P0 | Batas **barang gratis** (usulan awal 3) dan batas **barang berbayar** diatur terpisah oleh admin |
-| CLM-03 | Pemberi menerima/menolak (mode *Pemberi memilih*) | P0 | Penolakan boleh dengan alasan standar; Penerima diberi tahu |
-| CLM-04 | Penerimaan otomatis (mode *Siapa cepat*) | P0 | Aman terhadap permintaan bersamaan: stok tidak boleh terlampaui |
-| CLM-05 | Atur waktu ambil dalam jendela yang tersedia | P0 | Alamat tepat terbuka hanya untuk klaim berstatus diterima |
-| CLM-06 | Serah terima berkode (6 digit atau QR) | P0 | Kode milik Penerima, dikonfirmasi Pemberi; hanya berlaku untuk klaim itu; boleh konfirmasi manual bila kamera/jaringan bermasalah |
-| CLM-07 | Pembatalan oleh kedua pihak dengan alasan | P0 | Stok kembali bila klaim batal |
-| CLM-08 | Penanganan no-show | P0 | Setelah jendela berakhir tanpa serah terima, Pemberi bisa menandai no-show; Penerima bisa membantah |
-| CLM-09 | Ucapan terima kasih (bukan bintang ulasan) | P0 | Pilihan singkat positif; laporan masalah lewat jalur terpisah |
-
-### 10.7 Chat (CHT)
+**Media (MED)**
 
 | ID | Kebutuhan | P | Kriteria penerimaan |
 |---|---|---|---|
-| CHT-01 | Chat per klaim (hanya Pemberi dan Penerima terkait) | P0 | Teks dan emoji; foto opsional P1 |
-| CHT-02 | Peringatan bila terdeteksi nomor HP, tautan, atau permintaan uang di muka | P0 | Peringatan tidak memblokir, tetapi menjelaskan risiko |
-| CHT-03 | Tombol laporkan dan blokir di chat | P0 | Pelaporan menyertakan konteks percakapan |
-| CHT-04 | Bagikan kontak WhatsApp secara sukarela | P1 | Hanya dengan persetujuan eksplisit kedua pihak |
+| MED-01 | Unggah foto (usulan maksimum 10 per barang) | P0 | Kompres di perangkat; progres; dapat diulang saat gagal; **metadata EXIF/lokasi dihapus** di server |
+| MED-02 | Unggah video (batas durasi dan ukuran: TBD, K7) | P0 | Progres dan percobaan ulang; status pemrosesan terlihat; **hanya tampil di storefront setelah siap**; thumbnail otomatis |
+| MED-03 | Ambil foto/video langsung dari kamera ponsel di halaman unggah | P0 | Berfungsi di peramban ponsel umum |
+| MED-04 | Atur urutan, foto sampul, dan **teks alternatif** | P0 | Foto sampul wajib sebelum terbit |
+| MED-05 | Ganti/hapus media | P0 | Media yang dihapus tidak lagi dapat diakses publik |
+| MED-06 | Watermark opsional | P2 | |
 
-### 10.8 Notifikasi (NTF)
-
-| ID | Kebutuhan | P | Kriteria penerimaan |
-|---|---|---|---|
-| NTF-01 | Notifikasi dalam aplikasi dan push untuk: klaim baru, diterima/ditolak, pesan baru, pengingat ambil, listing akan berakhir | P0 | Pengguna bisa mengatur per jenis; tidak ada notifikasi ganda |
-| NTF-02 | Email untuk kejadian penting | P1 | Opsional |
-| NTF-03 | WhatsApp untuk pengingat | P1 | Memerlukan persetujuan pengguna dan biaya penyedia |
-
-### 10.9 Preferensi komunitas Muslim (COM), opsional
+**Permintaan beli dan pesanan (ORD)**
 
 | ID | Kebutuhan | P | Kriteria penerimaan |
 |---|---|---|---|
-| COM-01 | Label anonim yang dapat dikonfigurasi (misalnya "Hamba Allah") | P0 | Admin dapat mengatur teks; default netral ("Sahabat Berbagi") |
-| COM-02 | Kategori perlengkapan ibadah dan bahan bacaan keagamaan | P0 | Tersedia sebagai kategori biasa |
-| COM-03 | Filter info halal (berdasarkan isian Pemberi) | P0 | Label tegas "diisi Pemberi, tidak diverifikasi"; tidak ada klaim sertifikasi |
-| COM-04 | Jendela ambil ramah waktu salat | P1 | Opsional per pengguna; tidak mengubah tampilan bagi yang tidak memakainya |
+| ORD-01 | Antrean permintaan beli dengan status (9.5) | P0 | Badge jumlah baru; urut waktu masuk |
+| ORD-02 | Beberapa peminat untuk satu barang tampil sebagai antrean | P0 | Admin memilih siapa yang dikonfirmasi |
+| ORD-03 | **Konfirmasi**: barang menjadi Dipesan dan batas waktu bayar ditetapkan | P0 | Batas waktu bawaan dari konfigurasi; harga terkunci saat konfirmasi |
+| ORD-04 | **Catat pembayaran** (metode, tanggal, nominal, bukti opsional) | P0 | Nominal sesuai harga terkunci atau selisih diberi alasan |
+| ORD-05 | Tandai diserahkan/dikirim lalu selesai | P0 | Barang menjadi Terjual |
+| ORD-06 | Tolak/batal dengan alasan; barang kembali Terbit | P0 | Pembeli dikabari (manual di MVP) |
+| ORD-07 | Kedaluwarsa otomatis bila lewat batas bayar | P0 | Barang kembali Terbit; tercatat |
+| ORD-08 | Catatan internal dan riwayat komunikasi | P0 | Tidak tampil ke publik |
 
-> Prinsip: antarmuka **default netral dan inklusif**; fitur komunitas Muslim bersifat opsional agar pengguna umum tetap nyaman.
-
-### 10.10 Dukungan sponsor (SPN)
-
-| ID | Kebutuhan | P | Kriteria penerimaan |
-|---|---|---|---|
-| SPN-01 | Slot "Didukung oleh" di tempat yang telah ditentukan (misalnya beranda bawah dan halaman Tentang) | P0 | Tidak menutupi aksi utama; tidak mengganggu alur klaim/serah terima |
-| SPN-02 | Label jelas "Disponsori" / "Didukung oleh" | P0 | Selalu terlihat dan dibedakan dari konten listing |
-| SPN-03 | Sponsor **tidak memengaruhi urutan** hasil pencarian atau Radar | P0 | Aturan tertulis dan diuji |
-| SPN-04 | Data pengguna **tidak dibagikan** ke sponsor | P0 | Pelaporan ke sponsor hanya angka agregat |
-| SPN-05 | Admin mengelola slot: konten, periode tayang, tautan | P1 | Perubahan tercatat |
-| SPN-06 | Laporan tayang agregat | P1 | Tanpa data pribadi |
-
-### 10.11 Butuh Barokah (WSH), Fase 2
+**Dana (FIN)**
 
 | ID | Kebutuhan | P | Kriteria penerimaan |
 |---|---|---|---|
-| WSH-01 | Penerima memposting kebutuhan | P1 | Boleh tampil anonim di publik; ada batas posting |
-| WSH-02 | Pemberi menawarkan barang untuk memenuhi kebutuhan | P1 | Menghubungkan ke alur klaim biasa |
-| WSH-03 | Penerima menutup kebutuhan setelah terpenuhi | P1 | Status "terpenuhi" |
+| FIN-01 | **Catatan penjualan** otomatis dari pesanan yang dibayar | P0 | Tidak bisa dihapus; koreksi lewat **catatan koreksi** dengan alasan |
+| FIN-02 | Rekap penjualan per periode dan kategori | P0 | Angka cocok dengan jumlah catatan penjualan |
+| FIN-03 | Alokasi dana ke kegiatan dan pos penggunaan | P1 | Total alokasi tidak boleh melebihi dana tersedia |
+| FIN-04 | Rekonsiliasi dengan mutasi rekening | P1 | Penanda sudah/ belum cocok |
+| FIN-05 | Ekspor laporan (CSV) | P1 | Dibatasi peran, tercatat |
 
-### 10.12 Mitra / Rumah Barokah (PRT), Fase 2
-
-| ID | Kebutuhan | P | Kriteria penerimaan |
-|---|---|---|---|
-| PRT-01 | Pendaftaran dan verifikasi Mitra oleh admin | P1 | Syarat verifikasi ditentukan kemudian |
-| PRT-02 | Halaman profil Mitra + jam layanan + alamat | P1 | Menjadi opsi Titik Ambil aman |
-| PRT-03 | Beberapa pengelola dalam satu Mitra | P1 | Peran: pemilik, pengelola |
-| PRT-04 | Laporan penyaluran Mitra | P1 | Ringkasan periode, dapat diunduh |
-
-### 10.13 Moderasi dan admin (ADM)
+**Kegiatan (ACT)**
 
 | ID | Kebutuhan | P | Kriteria penerimaan |
 |---|---|---|---|
-| ADM-01 | Laporkan listing/pengguna/pesan dengan alasan standar | P0 | Pelapor dapat konfirmasi; identitas pelapor tidak dibuka ke terlapor |
-| ADM-02 | Antrean moderasi dengan prioritas dan riwayat tindakan | P0 | Setiap tindakan tercatat (siapa, kapan, alasan) |
-| ADM-03 | Tindakan: peringatan, sembunyikan, hapus, batasi, tangguhkan akun | P0 | Pengguna diberi tahu alasan dan jalur banding |
-| ADM-04 | Konfigurasi: kategori, batas, ambang Jalur Segera, label anonim, teks kebijakan | P0 | Perubahan konfigurasi tercatat |
-| ADM-05 | Dasbor metrik inti | P0 | Lihat bagian 16 |
-| ADM-06 | Pencarian pengguna/listing/klaim untuk dukungan | P0 | Data pribadi ditampilkan seminimal mungkin dan akses tercatat |
+| ACT-01 | Kelola kegiatan: nama, deskripsi, target dana, periode, status | P0 | |
+| ACT-02 | Dokumentasi kegiatan (foto/video + keterangan) | P0 | Memerlukan persetujuan orang yang tampil; **perhatian khusus untuk anak** (Bagian 15) |
+| ACT-03 | Laporan penggunaan dana: pos, nominal, tanggal, bukti | P0 (ringkas), P1 (rinci) | Publik melihat versi yang disetujui admin |
+| ACT-04 | Terbit/tarik kegiatan dan laporan | P0 | |
 
-> Prosedur moderasi lengkap (tim, jam layanan, SLA) ditunda sampai rapat (Bagian 18). Kebutuhan di atas adalah **kemampuan sistem** yang tetap diperlukan.
+**Konten dan dasbor (CMS, DSH)**
+
+| ID | Kebutuhan | P | Kriteria penerimaan |
+|---|---|---|---|
+| CMS-01 | Kelola halaman statis: Tentang, Cara Kerja, FAQ, Kebijakan, Kontak | P0 | |
+| CMS-02 | **Satu sumber** untuk rekening resmi dan nomor WhatsApp yang tampil di storefront | P0 | Perubahan tercatat; mencegah rekening palsu beredar |
+| CMS-03 | Slot sponsor | P1 | Berlabel jelas |
+| DSH-01 | Dasbor: barang per status, antrean pesanan, penjualan dan dana periode berjalan | P0 | |
+| DSH-02 | Pengingat: barang diterima belum dikurasi lama, pesanan hampir kedaluwarsa | P1 | |
+
+### 10.2 Frontend 2: Storefront publik
+
+| ID | Kebutuhan | P | Kriteria penerimaan |
+|---|---|---|---|
+| STR-01 | Beranda: sorotan barang, kegiatan berjalan, ringkasan dampak, cara kerja, ajakan donasi barang | P0 | |
+| STR-02 | Katalog: kartu barang (foto, judul, harga, status), filter (kategori, harga, kondisi), urut, pencarian | P0 | Filter dapat dihapus satu per satu; kondisi kosong yang membantu |
+| STR-03 | Detail barang: galeri foto, video, keterangan, kondisi, **kekurangan**, harga, status, kegiatan terkait | P0 | Informasi donatur **tidak** tampil |
+| STR-04 | Status jelas: **Tersedia / Dipesan / Terjual** | P0 | Barang Terjual tidak dapat dipesan |
+| STR-05 | Permintaan beli: form (nama, kontak, catatan) + tombol WhatsApp berisi pesan otomatis | P0 | Validasi; perlindungan spam; konfirmasi "permintaan diterima" |
+| STR-06 | Informasi cara bayar dan pengambilan/pengiriman + peringatan "bayar hanya ke rekening resmi" | P0 | Rekening berasal dari CMS-02 |
+| STR-07 | **Kegiatan dan Transparansi Dana**: daftar kegiatan, detail, progres dana, dokumentasi, laporan penggunaan | P0 | Hanya yang diterbitkan admin |
+| STR-08 | Ringkasan dampak (agregat): barang terjual, total dana, kegiatan terdanai | P0 | Angka berasal dari catatan penjualan |
+| STR-09 | **Form Donasi Barang**: data donatur, jenis barang, foto opsional, **persetujuan** | P0 | Masuk antrean admin berstatus Diajukan; tidak tampil di publik |
+| STR-10 | Halaman statis dan FAQ | P0 | |
+| STR-11 | **SEO dan berbagi**: judul/meta, Open Graph, sitemap, data terstruktur produk, URL slug stabil | P0 | Pratinjau tautan benar di WhatsApp dan media sosial |
+| STR-12 | Arsip "Sudah Terjual" (galeri dampak) | P1 | |
+| STR-13 | Simpan favorit di perangkat dan tombol bagikan | P1 | |
+| STR-14 | Slot sponsor | P1 | Berlabel jelas; tidak memengaruhi urutan |
+
+### 10.3 Lintas sistem (INT)
+
+| ID | Kebutuhan | P | Kriteria penerimaan |
+|---|---|---|---|
+| INT-01 | Perubahan di digitaldatagenerus muncul di storefront dalam waktu singkat | P0 | Target waktu rambat: TBD |
+| INT-02 | API publik hanya mengembalikan barang berstatus Terbit dengan field yang disanitasi | P0 | Diuji bahwa field donatur tidak pernah ada |
+| INT-03 | Notifikasi ke admin untuk permintaan beli dan donasi baru | P0 | Email atau notifikasi dasbor; tidak ganda |
+| INT-04 | Notifikasi ke pembeli (diterima, dikonfirmasi, pengingat bayar) | P1 | Opsional; dengan persetujuan |
+| INT-05 | Pemrosesan media: ubah ukuran, format modern, thumbnail video | P0 | Cepat dimuat di jaringan seluler |
+| INT-06 | Pembayaran online | P2 | Bergantung K1 |
 
 ---
 
 ## 11. Brief untuk tim UI/UX
 
-### Prinsip desain
-1. **Bermartabat.** Penerima tidak boleh merasa dihakimi atau dikasihani. Bahasa netral dan hangat.
-2. **Tenang dan jelas.** Satu aksi utama per layar.
-3. **Gratis vs berbayar tidak boleh membingungkan.** Tipe harga selalu terlihat dan cara bayar dijelaskan sebelum klaim.
-4. **Aman secara default.** Informasi sensitif (alamat, nomor HP) tersembunyi sampai perlu; jelaskan alasannya di antarmuka.
-5. **Mudah untuk semua.** Teks jelas, bahasa sederhana, bisa dipakai pengguna baru teknologi dan usia lanjut.
-6. **Ringan.** Rancang untuk layar kecil (sekitar 360 px), koneksi lambat, dan kuota terbatas.
-7. **Inklusif.** Default netral untuk umum. Fitur dan istilah komunitas Muslim ("Hamba Allah", info halal, jendela salat) bersifat opsional dan tidak dipaksakan.
-8. **Sponsor dengan etika.** Sponsor selalu berlabel, tidak menyerupai listing, dan tidak mengganggu alur utama.
+### Dua konteks desain
+| | **Storefront (publik)** | **digitaldatagenerus (admin)** |
+|---|---|---|
+| **Tujuan** | Membuat orang percaya dan memesan | Membuat admin bekerja cepat dan tanpa salah |
+| **Nada** | Hangat, jujur, bermartabat | Netral, jelas, efisien |
+| **Prioritas** | Cerita, kepercayaan, kecepatan, mudah dibagikan | Kejelasan status, form tahan kesalahan, aman |
+| **Perangkat utama** | Ponsel | Ponsel (ambil foto/video) dan desktop (kerja data) |
+
+Keduanya memakai **satu design system** (token warna, tipografi, jarak, komponen dasar) dengan varian untuk dua konteks, supaya konsisten dan hemat biaya.
+
+### Prinsip untuk storefront
+1. **Kepercayaan di setiap layar.** Tampilkan tanda kepercayaan: rekening resmi, ringkasan dampak, tautan transparansi, dokumentasi kegiatan.
+2. **Jujur soal barang.** Kondisi dan kekurangan tampil jelas. Foto multi-sudut. Jangan ada tekanan palsu ("tinggal 1!") yang tidak benar.
+3. **Harga dan status tak ambigu.** Tersedia/Dipesan/Terjual mudah dibedakan, tidak hanya dengan warna.
+4. **Bercerita tanpa membebani.** Cerita barang dan kegiatan singkat, tidak menggunakan rasa kasihan berlebihan.
+5. **Melindungi donatur dan penerima manfaat.** Tidak ada nama, kontak, atau alamat donatur. Foto orang hanya dengan persetujuan; **anak-anak tidak ditampilkan** tanpa persetujuan wali dan kebijakan yang jelas.
+6. **Cepat dan hemat kuota.** Mobile-first (±360 px), gambar ringan, video tidak otomatis memutar.
+7. **Inklusif.** Netral untuk umum; label seperti "Hamba Allah" dan kategori ibadah bersifat opsi, bukan satu-satunya.
+8. **Sponsor dengan etika.** Selalu berlabel, tidak menyerupai barang, tidak menyela alur pembelian.
+
+### Prinsip untuk digitaldatagenerus
+1. **Alur bertahap dan tersimpan otomatis** (draf), terutama untuk unggah foto/video yang sering terputus.
+2. **Status dan langkah berikutnya selalu terlihat** pada setiap barang dan pesanan.
+3. **Cegah kesalahan**: konfirmasi untuk aksi yang berisiko (terbitkan, tarik, catat pembayaran, hapus); validasi sebelum kirim; pesan error menjelaskan cara memperbaiki.
+4. **Ramah ponsel**: tombol besar, kamera langsung, daftar yang bisa dipakai satu tangan.
+5. **Padat tetapi terbaca** di desktop: tabel dengan filter, pencarian, dan aksi massal (Fase 2).
+6. **Data sensitif minimal**: tampilkan kontak seperlunya; tandai jelas bagian yang tidak boleh keluar ke publik.
 
 ### Layar yang perlu dirancang (MVP)
-| Area | Layar |
-|---|---|
-| Onboarding | Sambutan, izin lokasi (dengan alasan), pilih wilayah manual, masuk/OTP |
-| Beranda | Radar Barokah (daftar), peta, filter, pencarian, tab **Segera**, kondisi sepi/di luar area pilot, slot sponsor |
-| Detail barang | Semua status listing; **tipe harga dan cara bayar**; atribut makanan; peringatan keamanan pangan; tombol aksi sesuai peran |
-| Posting | Alur bertahap: foto → info → **tipe harga** → atribut makanan (bila perlu) → mode klaim/jendela → lokasi → pratinjau |
-| Klaim | Form klaim, status klaim (termasuk harga terkunci), daftar klaim saya |
-| Pemberi | Kelola listing, daftar peminta, terima/tolak |
-| Serah terima | Kode/QR (Penerima), input/scan kode + konfirmasi pembayaran (Pemberi), layar sukses |
-| Chat | Daftar percakapan, percakapan, peringatan keamanan |
-| Profil | Profil, level kepercayaan, mode anonim, pengaturan notifikasi, hapus akun |
-| Bantuan | Panduan aman berbagi dan bertransaksi, aturan barang, laporan |
-| Tentang | Informasi aplikasi dan sponsor |
 
-### Kondisi wajib didesain di setiap layar
-Memuat, kosong, error, offline/koneksi buruk, sukses, tidak ada izin (lokasi/kamera/notifikasi), stok habis/kedaluwarsa, **harga berubah/barang sudah diambil orang lain**, dan **listing Segera yang hampir habis waktu**.
+**Storefront**
+Beranda · Katalog (daftar, filter, pencarian, kondisi kosong) · Detail barang (galeri, video, kondisi, kekurangan, harga, status, tombol pesan) · Form permintaan beli + konfirmasi · Daftar kegiatan · Detail kegiatan dan transparansi dana · Ringkasan dampak · Form donasi barang + konfirmasi · Cara kerja · FAQ · Tentang · Kebijakan · Kontak
 
-### Pertanyaan desain yang perlu dijawab lewat riset
-- Seberapa nyaman Penerima meminta barang kepada orang asing? Apa yang membuat mereka merasa aman?
-- Apakah pengguna paham beda gratis dan berbayar dengan cepat? Perlukah antarmuka membedakan "Pemberi" dan "Penjual"?
-- Bagaimana menampilkan Jalur Segera agar terasa mendesak tetapi tidak membuat panik?
-- Di mana slot sponsor boleh tampil tanpa merusak kepercayaan?
-- Apakah Pemberi lebih suka memilih sendiri atau sistem yang memilih?
-- Seberapa penting peta dibanding daftar bagi pengguna di kota dan di pinggiran Bandung?
-- Bagaimana istilah "barokah" dipahami pengguna umum dan lintas keyakinan?
-- Hal apa yang membuat Pemberi ragu memasang barang atau makanan?
+**digitaldatagenerus**
+Login · Dasbor · Daftar donatur · Detail dan form donatur (dengan persetujuan) · Daftar barang (filter status) · Form barang bertahap (data → media → harga/keterangan → pratinjau → terbit) · Unggah media · Antrean permintaan beli · Detail pesanan (konfirmasi, catat bayar, selesai) · Catatan penjualan dan rekap · Daftar dan form kegiatan · Laporan penggunaan dana · Pengaturan (rekening resmi, kontak, konfigurasi) · Kelola halaman statis · Akun admin
+
+### Kondisi wajib didesain
+Memuat, kosong, error, offline/koneksi buruk, sukses, **unggah media gagal/terputus**, **video masih diproses**, **barang sudah dipesan/terjual saat dibuka**, **barang ditarik**, dan tidak ada izin kamera/berkas.
+
+### Pertanyaan desain untuk riset
+- Apa yang membuat calon pembeli percaya pada penjual barang donasi?
+- Seberapa rinci laporan dana yang dibutuhkan pembeli agar merasa cukup?
+- Apakah pembeli nyaman memesan lewat WhatsApp atau lebih suka checkout di situs?
+- Bagaimana menampilkan kekurangan barang tanpa menurunkan minat secara tidak adil?
+- Seberapa nyaman donatur dengan foto/video barangnya tampil? Perlukah pilihan anonim yang lebih halus?
+- Bagaimana admin biasanya mengambil foto (ponsel, kondisi cahaya), dan apa yang paling merepotkan?
 
 ### Aksesibilitas dan konten
-- Target **WCAG 2.2 AA**: kontras teks ≥ 4,5:1, sasaran sentuh ≥ 44×44 px, tidak mengandalkan warna saja, fokus terlihat, mendukung pembaca layar. Hitung mundur harus dapat dibaca pembaca layar tanpa membanjiri pengumuman.
-- Microcopy: pesan error menjelaskan masalah dan cara memperbaikinya. Teks kosong mengarahkan tindakan.
-- Hindari *dark pattern*: tidak ada paksaan membagikan lokasi/kontak, tidak ada rasa bersalah untuk memancing posting, tidak ada tekanan palsu ("tinggal 1!") yang tidak benar.
-- Pakai data contoh palsu pada mockup (tanpa NIK, nomor HP, atau alamat asli).
+- Target **WCAG 2.2 AA**: kontras ≥ 4,5:1, sasaran sentuh ≥ 44×44 px, tidak mengandalkan warna saja, fokus terlihat, teks alternatif untuk foto, takarir/transkrip untuk video bila memungkinkan.
+- Microcopy menjelaskan masalah dan solusinya. Hindari *dark pattern*.
+- Pakai data contoh palsu pada mockup (tanpa data pribadi asli).
 
-### Yang diharapkan dari UI/UX sebelum diserahkan ke developer
-User flow lengkap (jalur sukses dan gagal), wireframe → desain visual, design system (token + komponen + semua status), spesifikasi responsif, spesifikasi handoff (jarak, token, perilaku interaksi, aksesibilitas), dan hasil uji usability awal.
+### Yang diharapkan dari UI/UX sebelum diserahkan
+User flow (sukses dan gagal) untuk dua aplikasi, wireframe → desain visual, design system bersama, spesifikasi responsif, spesifikasi handoff, dan hasil uji usability awal (dengan admin dan calon pembeli).
 
 ---
 
 ## 12. Catatan untuk tim Frontend
 
-> Berikut **usulan**; stack final ditentukan tim teknis.
+> **Usulan**; stack final ditentukan tim teknis. Saya tidak mengetahui teknologi `digitaldatagenerus` (K3).
 
-### Rute (usulan)
-| Rute | Layar | Akses |
-|---|---|---|
-| `/` | Radar Barokah | Publik |
-| `/segera` | Jalur Segera | Publik |
-| `/barokah/:id` | Detail barang | Publik (info terbatas), lengkap bila masuk |
-| `/bagikan` | Posting barang | Masuk (L1) |
-| `/klaim` | Klaim saya | Masuk |
-| `/kelola` | Listing saya dan peminta | Masuk |
-| `/chat/:claimId` | Percakapan | Pihak terkait |
-| `/serah-terima/:claimId` | Kode/scan serah terima | Pihak terkait |
-| `/profil`, `/pengaturan` | Profil dan pengaturan | Masuk |
-| `/bantuan`, `/aturan`, `/tentang` | Bantuan, kebijakan, tentang | Publik |
-| `/admin/*` | Panel admin | Moderator/Admin |
+### 12.1 Frontend 1: digitaldatagenerus
+- **Aplikasi admin** (SPA atau MPA) dengan rute terlindungi dan pemeriksaan peran di sisi UI **dan** server (UI hanya kenyamanan; server yang menegakkan).
+- **Tabel dan form**: komponen tabel dengan paginasi sisi server, filter, dan sortir; form bertahap dengan validasi dan **simpan draf otomatis**.
+- **Unggah media**: antrean unggah, progres per berkas, **jeda dan lanjut/ulang** saat koneksi putus, kompres foto di perangkat, pratinjau, input kamera (`capture`) untuk ponsel, penanganan berkas besar (video) lewat URL unggah langsung ke penyimpanan (presigned).
+- **Pratinjau** memakai komponen yang sama dengan storefront (paket komponen bersama) agar yang terlihat saat pratinjau sama dengan hasil terbit.
+- **Keamanan**: token tidak disimpan di tempat yang mudah dicuri bila ada alternatif cookie `HttpOnly`; sanitasi tampilan teks bebas; konfirmasi untuk aksi berisiko; data pribadi tidak masuk log klien.
+- **Konkurensi**: tangani konflik edit (dua admin mengubah barang yang sama) dengan pesan jelas; tombol aksi dinonaktifkan saat proses.
+- **Aksesibilitas** setara storefront.
 
-### Kebutuhan teknis
-- **PWA mobile-first**: dapat dipasang di layar utama, cache aset dasar, halaman offline yang informatif, pembaruan versi yang mulus.
-- **State**: data server dikelola dengan pustaka data-fetching (cache, retry, invalidasi); state UI tetap lokal. Draf posting disimpan lokal agar tidak hilang saat koneksi putus.
-- **Unggah gambar**: kompres dan ubah ukuran di klien sebelum unggah; tampilkan progres; bisa diulang saat gagal. _(Target ukuran, TBD)_
-- **Peta**: muat malas (lazy), alternatif daftar selalu tersedia. Klien **tidak pernah** menerima koordinat tepat untuk pengguna yang tidak berhak.
-- **Harga**: tampilkan dalam format Rupiah Indonesia; nilai berasal dari server (bilangan bulat), jangan dihitung ulang di klien.
-- **Hitung mundur Jalur Segera**: sinkronkan dengan jam server (jangan percaya jam perangkat) dan hentikan saat tab tidak aktif untuk hemat baterai.
-- **Waktu**: tampilkan dengan zona waktu lokasi barang dan tulis kodenya (WIB/WITA/WIT) di jam ambil.
-- **Real-time**: pembaruan status klaim dan chat lewat WebSocket/SSE atau polling dengan fallback.
-- **Slot sponsor**: komponen tersendiri yang dimuat dari konfigurasi; tidak boleh memblokir render konten utama.
-- **i18n**: semua teks dari berkas terjemahan; format tanggal/angka lokal Indonesia.
-- **Analitik**: lihat bagian 16.
-- **Keamanan klien**: tidak ada rahasia di kode; sanitasi tampilan konten pengguna (cegah XSS); hindari menyimpan token di tempat yang mudah dicuri bila ada alternatif cookie `HttpOnly`.
-- **Konkurensi**: tombol aksi (klaim, terima) dinonaktifkan saat proses berjalan; tangani respons "stok sudah habis" dengan jelas.
-- **Kerangka verifikasi**: siapkan komponen dan rute verifikasi di balik *feature flag* yang **mati** di MVP.
+### 12.2 Frontend 2: Storefront
+- **Render di server atau statik (SSR/SSG/ISR)** agar halaman cepat dan terindeks mesin pencari; **cache dan revalidasi** saat barang diterbitkan/ditarik/terjual (cocok dengan INT-01).
+- **Gambar responsif** (`srcset`, format modern, dimensi eksplisit agar tidak menggeser tata letak). **Video** dimuat malas, tanpa putar otomatis, dengan gambar poster.
+- **Anggaran performa**: target Core Web Vitals "baik" pada jaringan seluler biasa (LCP ≤ 2,5 dtk). Ukuran halaman awal: TBD.
+- **SEO**: judul/meta unik, Open Graph, sitemap, data terstruktur produk, `canonical`, slug stabil, halaman barang Terjual tetap dapat diakses dengan status yang jelas (jangan 404 mendadak).
+- **Form publik**: validasi, perlindungan spam (honeypot/CAPTCHA/pembatasan laju), pesan sukses/gagal yang jelas, tombol WhatsApp memakai tautan pesan terisi otomatis dari data barang.
+- **Privasi**: tidak memuat pelacak pihak ketiga tanpa persetujuan; analitik tidak menerima data pribadi.
+- **PWA** (opsional): pemasangan di layar utama dan halaman offline dasar.
+- **Rute (usulan)**: `/`, `/katalog`, `/barang/:slug`, `/kegiatan`, `/kegiatan/:slug`, `/dampak`, `/donasi-barang`, `/cara-kerja`, `/faq`, `/tentang`, `/kebijakan`, `/kontak`.
+
+### 12.3 Bersama untuk kedua frontend
+- **Satu paket design token dan komponen** (warna, tipografi, kartu barang, galeri, label status).
+- **Klien API dibangkitkan dari spesifikasi OpenAPI** supaya tipe data sama persis di dua aplikasi.
+- **Repositori**: bisa *monorepo* atau terpisah; pilih yang paling sesuai tim (K3). Pisahkan penerapan (deploy) agar storefront publik tidak terganggu saat admin diperbarui.
+- **i18n** dan format Rupiah Indonesia ("Rp 25.000"); nilai harga selalu dari server (bilangan bulat).
 
 ---
 
 ## 13. Catatan untuk tim Backend
 
-> Berikut **usulan**; teknologi final ditentukan tim teknis.
+> **Usulan**; teknologi final ditentukan tim teknis. Bila backend `digitaldatagenerus` sudah ada, perluas, bukan ganti (K3).
 
 ### Arsitektur (usulan)
-Aplikasi modular (*modular monolith*) dengan lapisan: **API → layanan (aturan bisnis) → akses data**. Modul: akun, listing, harga, klaim, Jalur Segera, chat, notifikasi, moderasi, wilayah, sponsor. Pekerjaan latar belakang (kedaluwarsa listing, klasifikasi Segera, pengingat, notifikasi, kompresi gambar) memakai antrean/job. Penyimpanan gambar di object storage dengan CDN.
-
-Basis data relasional dengan dukungan **geospasial** (pencarian radius dan indeks spasial) sangat disarankan. Pencarian teks bisa dimulai dari fitur bawaan basis data.
+Aplikasi modular (*modular monolith*): **API → layanan (aturan bisnis) → akses data**. Modul: akun admin, donatur, barang, media, pesanan, dana, kegiatan, konten, notifikasi, audit. **Dua permukaan API**: **publik** (baca terbatas + form) dan **admin** (terautentikasi). Pekerjaan latar (pemrosesan media, kedaluwarsa pesanan, notifikasi, pembangunan ulang cache) memakai antrean/job. Media di object storage + CDN. Basis data relasional.
 
 ### Model data utama
 | Entitas | Atribut kunci |
 |---|---|
-| **User** | id, no_hp (terenkripsi/hash untuk pencarian), email, nama_tampil, foto, wilayah_id, level_kepercayaan, mode_anonim, status, dibuat_pada |
-| **Verification** _(disiapkan)_ | id, user_id, tipe, status, penyedia, referensi_eksternal, diperbarui_pada. **Tidak menyimpan NIK mentah** |
-| **Region** | id, tingkat, induk_id, nama, kode_resmi, zona_waktu |
-| **Category** | id, nama, jenis (umum / makanan_kemasan / makanan_siap_saji), aturan |
-| **Listing** | id, pemberi_id, judul, deskripsi, kategori_id, kondisi, stok_total, stok_tersedia, mode_klaim, **tipe_harga** (gratis/berbayar), **harga_rupiah** (integer, null bila gratis), status, wilayah_id, lokasi_publik (dikaburkan), lokasi_tepat (terenkripsi), patokan, ambil_mulai, ambil_selesai, **kedaluwarsa_pada**, **batas_konsumsi_pada**, **jalur_segera** (boolean, turunan), atribut_makanan (JSON), dibuat/diubah |
-| **ListingImage** | id, listing_id, url, urutan |
-| **Claim** | id, listing_id, penerima_id, jumlah, pesan, status, **harga_terkunci_rupiah**, kode_serah_terima (hash), jadwal_ambil, diputuskan_pada, **pembayaran_dikonfirmasi_pada**, selesai_pada |
-| **Conversation / Message** | id, claim_id, pengirim_id, isi, dibuat_pada, status_baca |
-| **Report** | id, pelapor_id, target_tipe, target_id, alasan, bukti, status, penangan_id |
-| **ModerationAction** | id, moderator_id, target, tindakan, alasan, dibuat_pada |
-| **Notification** | id, user_id, jenis, payload, kanal, status |
-| **SponsorSlot** | id, nama_sponsor, penempatan, konten, tautan, periode_mulai, periode_selesai, aktif |
-| **Partner** | id, nama, jenis, alamat, jam_layanan, status_verifikasi (P1) |
-| **Wish (Butuh Barokah)** | id, user_id, judul, kategori_id, wilayah_id, status (P1) |
-| **Config** | kunci, nilai, diubah_oleh, diubah_pada (batas klaim, ambang Segera, label anonim, dll.) |
-| **AuditLog** | id, aktor, aksi, target, waktu (untuk tindakan sensitif) |
+| **AdminUser / Role** | id, nama, email, kata sandi (hash), peran, status, 2FA, dibuat/diubah |
+| **Donor** | id, nama, kontak (terenkripsi), wilayah, preferensi_anonim, catatan, dibuat/diubah, dianonimkan_pada |
+| **DonorConsent** | id, donor_id, jenis (jual/publikasi_media), diberikan_pada, bentuk_bukti, dicabut_pada |
+| **Category** | id, nama, urutan, aktif |
+| **Item** | id, **kode_barang**, donor_id, kategori_id, nama_internal, judul_publik, keterangan_publik, kekurangan, catatan_internal, kondisi_grade, harga_rupiah, jumlah, status, slug, kegiatan_id (opsional), lokasi_penyimpanan, cover_media_id, diterbitkan_pada, dibuat_oleh/diubah_oleh, dibuat/diubah |
+| **ItemMedia** | id, item_id, tipe (foto/video), url, urutan, alt, status_proses, ukuran, durasi |
+| **ItemStatusHistory** | id, item_id, dari, ke, oleh, alasan, waktu |
+| **Intake** (penerimaan) | id, item_id, cara (diantar/dijemput), petugas, diterima_pada, catatan (P1: jadwal jemput) |
+| **PurchaseRequest** (permintaan beli) | id, item_id, nama_pembeli, kontak_pembeli (terenkripsi), catatan, status, harga_terkunci_rupiah, batas_bayar_pada, dikonfirmasi_pada, dibuat_pada |
+| **SaleRecord** (catatan penjualan) | id, request_id, item_id, nominal_rupiah, metode, dibayar_pada, bukti_ref, dicatat_oleh, jenis (penjualan/koreksi), alasan_koreksi |
+| **Activity** (kegiatan) | id, judul, slug, deskripsi, target_dana, periode, status, diterbitkan_pada |
+| **ActivityMedia** | id, activity_id, tipe, url, keterangan |
+| **FundAllocation** (P1) | id, activity_id, pos, nominal_rupiah, tanggal, bukti_ref |
+| **Page / Content** | id, kunci, isi, diterbitkan |
+| **SiteSetting** | kunci, nilai (rekening resmi, WhatsApp, label anonim, batas bayar, dll.), diubah_oleh, diubah_pada |
+| **SponsorSlot** (P1) | id, nama, penempatan, konten, tautan, periode, aktif |
+| **AuditLog** | id, aktor, aksi, target, sebelum, sesudah, waktu |
 
 ### Aturan bisnis penting
-1. **Stok tidak boleh terlampaui.** Penerimaan klaim otomatis aman terhadap permintaan bersamaan (transaksi + penguncian/pembaruan atomik).
-2. **Alamat dan koordinat tepat** hanya dikembalikan API untuk Pemberi dan Penerima dengan klaim **accepted**. Koordinat publik dikaburkan di server (radius pengaburan diatur konfigurasi).
-3. **Harga terkunci**: saat klaim berstatus accepted, `harga_terkunci_rupiah` disalin dari listing dan tidak berubah meski listing diedit.
-4. **Tidak ada pemrosesan uang** di MVP. Sistem hanya mencatat bahwa Pemberi mengonfirmasi pembayaran diterima. Tidak menyimpan nomor rekening/kartu.
-5. **Klasifikasi Jalur Segera**: job terjadwal menghitung `jalur_segera` dari jenis makanan, `kedaluwarsa_pada`, `batas_konsumsi_pada`, dan ambang konfigurasi (aturan 5.2).
-6. **Kedaluwarsa otomatis**: listing yang melewati `kedaluwarsa_pada`/`batas_konsumsi_pada` menjadi `expired`; klaim yang belum diputuskan menjadi `expired`. Klaim pending Jalur Segera kedaluwarsa dalam waktu lebih pendek (konfigurasi).
-7. **Validasi makanan**: jendela ambil tidak boleh melewati `batas_konsumsi_pada`; tanggal kedaluwarsa tidak boleh di masa lalu.
-8. **Serah terima**: kode dibuat saat klaim diterima, disimpan sebagai hash, dibatasi percobaan. Konfirmasi mengubah klaim menjadi `completed`. Untuk berbayar, konfirmasi menyertakan penanda pembayaran diterima.
-9. **No-show**: dihitung per pengguna dalam jangka waktu tertentu; ambang dan sanksi dapat dikonfigurasi (usulan awal: 3 kali dalam 30 hari, TBD).
-10. **Batas klaim aktif** untuk barang gratis dan berbayar dikonfigurasi terpisah.
-11. **Idempoten**: endpoint pembuatan klaim dan konfirmasi serah terima menerima kunci idempotensi.
-12. **Soft delete** untuk listing/klaim yang berkaitan dengan laporan, supaya bukti tidak hilang.
-13. **Sponsor tidak memengaruhi pemeringkatan**: pengurutan hasil tidak boleh membaca data sponsor. Data pengguna tidak dikirim ke sponsor.
-14. **Verifikasi** berada di balik *feature flag* dan tidak menjadi syarat memposting/klaim di MVP.
+1. **Hanya barang berstatus Terbit** yang muncul di API publik. Penarikan berlaku segera, termasuk membersihkan cache.
+2. **Data donatur dan data pembeli tidak pernah ada di respons publik**, termasuk nama berkas dan metadata media. **Hapus EXIF/GPS** dari foto saat unggah.
+3. **Syarat terbit**: judul, keterangan, kategori, kondisi, harga > 0, minimal satu foto dengan sampul, persetujuan donatur tercatat, kurasi selesai.
+4. **Transisi status tervalidasi** (diagram 9.4 dan 9.5) dan semuanya masuk `ItemStatusHistory` dan `AuditLog`.
+5. **Harga terkunci** saat pesanan dikonfirmasi; perubahan harga setelahnya tidak memengaruhi pesanan itu.
+6. **Stok**: konfirmasi pesanan mengurangi stok tersedia secara atomik; kedaluwarsa/batal mengembalikannya. Dua admin tidak boleh mengonfirmasi barang yang sama bersamaan (transaksi + penguncian).
+7. **Tidak ada pemrosesan uang** di MVP. Sistem hanya **mencatat** pembayaran yang dikonfirmasi admin.
+8. **Catatan penjualan tidak boleh dihapus**; koreksi dengan catatan koreksi beralasan. Jumlah alokasi dana tidak boleh melebihi dana tersedia.
+9. **Pesanan kedaluwarsa** otomatis lewat job terjadwal; batas bayar dari konfigurasi.
+10. **Idempoten**: pengiriman permintaan beli dan donasi menerima kunci idempotensi dan dibatasi laju untuk mencegah spam/ganda.
+11. **Retensi data pembeli dan donatur** diatur konfigurasi; dapat dianonimkan tanpa merusak catatan penjualan.
+12. **Soft delete** dengan alasan untuk entitas yang berkaitan dengan dana.
+13. Sponsor tidak boleh memengaruhi pengurutan katalog (Fase 2).
 
-### Rancangan API (draf, `/api/v1`)
-Autentikasi: token berumur pendek + refresh. Daftar memakai paginasi **cursor**. Format error konsisten: `{ "error": { "code", "message", "fields?" } }`.
+### Media
+Alur: klien meminta **URL unggah langsung** → unggah ke penyimpanan → job memeriksa tipe/ukuran → hapus metadata → buat varian ukuran (foto) / transcode dan thumbnail (video) → tandai siap. Pindai berkas untuk tipe yang diizinkan. Hanya media berstatus siap yang disajikan ke publik. Pilihan penyimpanan video (sendiri vs layanan pihak ketiga) ada di K7.
 
-| Metode | Endpoint | Akses | Fungsi |
-|---|---|---|---|
-| POST | `/auth/otp/request` | Publik | Minta OTP |
-| POST | `/auth/otp/verify` | Publik | Verifikasi OTP, terbitkan token |
-| POST | `/auth/google` | Publik | Masuk dengan Google |
-| POST | `/auth/refresh` | Token refresh | Perbarui token |
-| GET/PATCH | `/me` | Masuk | Lihat/ubah profil, mode anonim |
-| DELETE | `/me` | Masuk | Ajukan penghapusan akun |
-| GET | `/me/verification` | Masuk | Status verifikasi (MVP: tidak diwajibkan) |
-| GET | `/regions` | Publik | Telusuri hierarki wilayah |
-| GET | `/categories` | Publik | Daftar kategori dan aturannya |
-| GET | `/listings` | Publik | Cari (lokasi/radius, wilayah, kategori, kata kunci, `price_type`, `urgent`, halal, dll.) |
-| GET | `/listings/urgent` | Publik | Jalur Segera (urut sisa waktu, jarak) |
-| POST | `/listings` | L1 | Buat listing |
-| GET | `/listings/{id}` | Publik | Detail (field sesuai hak akses) |
-| PATCH | `/listings/{id}` | Pemilik | Ubah |
-| POST | `/listings/{id}/close` | Pemilik | Tutup/batalkan |
-| POST | `/media/uploads` | L1 | Dapatkan URL unggah gambar |
-| POST | `/listings/{id}/claims` | L1 | Ajukan klaim (idempoten) |
-| GET | `/me/claims` | Masuk | Klaim saya |
-| GET | `/listings/{id}/claims` | Pemilik | Peminta pada listing saya |
-| POST | `/claims/{id}/accept` | Pemilik | Terima (mengunci harga) |
-| POST | `/claims/{id}/decline` | Pemilik | Tolak |
-| POST | `/claims/{id}/cancel` | Pihak terkait | Batalkan |
-| POST | `/claims/{id}/handover/confirm` | Pemilik | Konfirmasi kode (+ `payment_received` untuk berbayar), idempoten |
-| POST | `/claims/{id}/no-show` | Pemilik | Tandai no-show |
-| GET/POST | `/claims/{id}/messages` | Pihak terkait | Baca/kirim pesan |
-| GET | `/notifications` | Masuk | Daftar notifikasi |
-| PATCH | `/me/notification-settings` | Masuk | Atur notifikasi |
-| POST | `/reports` | Masuk | Laporkan (termasuk laporan harga/pembayaran) |
-| GET | `/sponsors/slots` | Publik | Slot sponsor aktif per penempatan |
-| GET/PATCH | `/admin/reports...` | Moderator | Antrean dan tindakan moderasi |
-| GET/PATCH | `/admin/config` | Admin | Konfigurasi batas, ambang Segera, label |
-| GET/POST/PATCH | `/admin/sponsors...` | Admin | Kelola slot sponsor (P1) |
-| GET | `/admin/metrics` | Admin | Metrik agregat |
+### Rancangan API (draf)
+
+**Publik** (`/api/public/v1`, tanpa login, tersanitasi, cache-friendly)
+
+| Metode | Endpoint | Fungsi |
+|---|---|---|
+| GET | `/items` | Daftar barang terbit (filter kategori, harga, kondisi, kata kunci, status; paginasi cursor) |
+| GET | `/items/{slug}` | Detail barang terbit |
+| GET | `/categories` | Daftar kategori |
+| GET | `/activities` | Daftar kegiatan terbit |
+| GET | `/activities/{slug}` | Detail kegiatan, dokumentasi, laporan dana |
+| GET | `/impact` | Ringkasan dampak agregat |
+| GET | `/pages/{key}` | Halaman statis |
+| GET | `/settings/public` | Rekening resmi, kontak, label |
+| POST | `/purchase-requests` | Kirim permintaan beli (idempoten, dibatasi laju) |
+| POST | `/donation-requests` | Ajukan donasi barang (idempoten, dibatasi laju) |
+
+**Admin** (`/api/admin/v1`, terautentikasi dan berperan)
+
+| Metode | Endpoint | Fungsi |
+|---|---|---|
+| POST | `/auth/login`, `/auth/logout`, `/auth/refresh` | Sesi admin |
+| GET/POST/PATCH | `/donors...` | Kelola donatur (+ `/donors/{id}/consents`, anonimkan) |
+| GET/POST/PATCH | `/items...` | Kelola barang |
+| POST | `/items/{id}/transition` | Pindah status (tervalidasi) |
+| POST | `/items/{id}/publish`, `/unpublish` | Terbit/tarik |
+| POST | `/media/uploads` | Minta URL unggah media |
+| GET/PATCH/DELETE | `/media/{id}` | Atur urutan, alt, hapus |
+| GET | `/purchase-requests` | Antrean |
+| POST | `/purchase-requests/{id}/confirm` | Konfirmasi (kunci harga, pesan barang) |
+| POST | `/purchase-requests/{id}/payment` | Catat pembayaran |
+| POST | `/purchase-requests/{id}/fulfill` | Selesai (diserahkan/dikirim) |
+| POST | `/purchase-requests/{id}/cancel`, `/reject` | Batal/tolak |
+| GET/POST | `/sales...` | Catatan penjualan dan koreksi |
+| GET | `/reports/sales` | Rekap penjualan |
+| GET/POST/PATCH | `/activities...` | Kegiatan, dokumentasi, laporan dana |
+| GET/PATCH | `/settings` | Rekening resmi, kontak, label, batas bayar |
+| GET/POST/PATCH | `/pages...` | Konten statis |
+| GET | `/dashboard` | Ringkasan dasbor |
+| GET | `/audit-logs` | Log audit (peran terbatas) |
+
+Format error konsisten: `{ "error": { "code", "message", "fields?" } }`.
 
 ### Notifikasi
-Push (Web Push/FCM) dan dalam aplikasi untuk MVP. Email dan WhatsApp di Fase 2. Sediakan SMS atau kanal cadangan untuk OTP.
+MVP: email atau notifikasi dasbor ke admin untuk permintaan beli dan donasi baru. Pesan ke pembeli/donatur dikirim **manual oleh admin** (templat disediakan). Otomatisasi WhatsApp/email di Fase 2.
 
 ### Observabilitas
-Log terstruktur dengan ID korelasi tanpa data pribadi; metrik latensi, laju error, antrean job, dan keterlambatan job Jalur Segera; peringatan untuk lonjakan laporan dan kegagalan OTP.
+Log terstruktur dengan ID korelasi tanpa data pribadi; metrik latensi, laju error, antrean job media, kegagalan unggah; peringatan lonjakan permintaan palsu.
 
 ---
 
@@ -624,80 +609,79 @@ Log terstruktur dengan ID korelasi tanpa data pribadi; metrik latensi, laju erro
 
 | Area | Kebutuhan |
 |---|---|
-| **Performa** | Target tampilan **Core Web Vitals "baik"** pada jaringan seluler biasa (LCP ≤ 2,5 dtk). Anggaran ukuran halaman awal: TBD. Respons API p95: TBD setelah baseline |
-| **Ketepatan waktu** | Pekerjaan penutupan otomatis Jalur Segera berjalan cukup sering sehingga listing tidak tampil melewati batas konsumsi (toleransi TBD) |
-| **Ketersediaan** | Target ketersediaan: TBD |
-| **Skala** | Rancang agar bisa dipecah per wilayah/beban; indeks spasial dan paginasi sejak awal |
-| **Kompatibilitas** | Peramban seluler modern (Chrome Android, Safari iOS) dua versi mayor terakhir; layar mulai ±360 px |
+| **Performa (storefront)** | Core Web Vitals "baik" pada jaringan seluler biasa (LCP ≤ 2,5 dtk). Anggaran ukuran halaman: TBD |
+| **Performa (admin)** | Daftar dan form responsif; unggah besar tidak memblokir antarmuka. Target: TBD |
+| **SEO** | Halaman katalog/barang/kegiatan terindeks; metadata dan data terstruktur benar |
+| **Ketersediaan** | Target: TBD. Storefront tetap tersaji dari cache saat admin/BE bermasalah ringan |
+| **Skala** | Katalog besar tanpa melambat: indeks, paginasi, CDN |
+| **Kompatibilitas** | Peramban seluler modern dua versi mayor terakhir; layar ±360 px; admin juga desktop |
 | **Aksesibilitas** | WCAG 2.2 AA |
-| **Keamanan** | Mengacu OWASP (ASVS/Top 10): validasi input server, query berparameter, otorisasi tingkat objek (cegah IDOR), rate limiting, batas ukuran unggahan, header keamanan, CORS ketat, rahasia di secret manager, pemindaian dependensi |
+| **Keamanan** | OWASP (ASVS/Top 10): validasi input server, query berparameter, otorisasi di setiap endpoint admin, rate limiting, batas ukuran unggahan, header keamanan, CORS ketat, rahasia di secret manager, pemindaian dependensi, 2FA admin (P1, wajib sebelum publik) |
+| **Kehandalan data** | Cadangan terjadwal + uji pemulihan; catatan penjualan tidak dapat dihapus; migrasi terlacak |
 | **Privasi** | Lihat di bawah |
-| **Kehandalan data** | Cadangan terjadwal dan uji pemulihan; migrasi skema terlacak |
-| **Lokalisasi** | i18n sejak awal; zona waktu per wilayah |
 
 ### Privasi dan data pribadi
-- Kumpulkan data pribadi **seminimal mungkin**. Tidak meminta NIK, KTP, atau alamat rumah di MVP, selain alamat Titik Ambil yang diberikan Pemberi.
-- Nomor HP: simpan terlindungi, **jangan tampil** ke pengguna lain, dan samarkan di log.
-- Alamat tepat: terenkripsi, hanya dibuka ke pihak yang berhak.
-- Tidak ada data rekening/kartu yang disimpan (pembayaran di tempat).
-- Data ke sponsor: hanya agregat, tanpa data pribadi.
-- Rancang sesuai prinsip **UU No. 27 Tahun 2022 tentang Pelindungan Data Pribadi** (persetujuan, tujuan, hak pengguna termasuk akses dan penghapusan). Tinjauan hukum formal **ditunda sampai rapat** (Bagian 18), tetapi desain sudah mengikuti prinsip tersebut.
-- Bila verifikasi identitas diaktifkan kelak, gunakan penyedia pihak ketiga dan **jangan menyimpan NIK mentah** di basis data aplikasi.
-- Data uji dan lingkungan non-produksi memakai data palsu.
+- **Data donatur** (nama, kontak, wilayah) dan **data pembeli** (nama, kontak) dikumpulkan seminimal mungkin, disimpan terlindungi, dan **tidak pernah** ke API publik.
+- Tidak meminta NIK/KTP. Tidak menyimpan data rekening/kartu pembeli.
+- **Foto/video**: hapus metadata lokasi; pastikan latar tidak memuat alamat, wajah, atau dokumen pribadi; persetujuan tercatat untuk orang yang tampil.
+- **Anak-anak**: jangan menampilkan wajah atau data yang dapat mengidentifikasi anak tanpa persetujuan wali dan kebijakan yang jelas.
+- Hak pengguna: akses, koreksi, penghapusan/anonimisasi (DON-06).
+- Rancang sesuai prinsip **UU No. 27 Tahun 2022 tentang Pelindungan Data Pribadi**. Tinjauan hukum formal **ditunda sampai rapat** (Bagian 18).
+- Analitik tidak menerima data pribadi; lingkungan non-produksi memakai data palsu.
 
 ---
 
-## 15. Kepercayaan, keamanan, dan moderasi
+## 15. Kepercayaan, keamanan, dan kebijakan
 
-> Prosedur operasional moderasi (tim, jam layanan, SLA, banding) ditunda sampai rapat. Bagian ini mencatat **risiko dan kemampuan sistem** yang diperlukan.
-
-### Risiko utama dan langkah desain
+### Risiko utama dan langkah
 | Risiko | Langkah |
 |---|---|
-| Penipuan, akun palsu | Verifikasi HP, batas akun baru, lencana dari riwayat, pelaporan; kerangka verifikasi lanjutan disiapkan |
-| Penjualan kembali barang **gratis** | Batas klaim aktif untuk barang gratis, aturan "barang gratis dilarang dijual kembali", laporan, sanksi |
-| **Penipuan harga/pembayaran** (minta bayar di muka, harga berubah) | Bayar di tempat, harga terkunci, peringatan di chat dan layar klaim, laporan khusus |
-| Barang tidak sesuai deskripsi | Anjuran periksa sebelum bayar, laporan, tindakan akun |
-| Penerima tidak datang | Kode serah terima, penandaan no-show, pembatasan bertahap |
-| Keamanan pertemuan | Lokasi dikaburkan, saran Titik Ambil publik/Rumah Barokah, panduan aman bertemu, tombol lapor |
-| Makanan tidak layak | Atribut wajib, batas konsumsi, jendela ambil tidak melewati batas, peringatan keamanan pangan, tanggung jawab dinyatakan jelas |
-| Barang terlarang | Daftar larangan, filter kata kunci, laporan, tinjauan moderator (AI di Fase 3) |
-| Pelecehan di chat | Blokir, laporan, tindakan akun |
-| Pemberi/penerima dipermalukan | Mode anonim, bahasa netral, tanpa papan peringkat publik |
-| Sponsor merusak kepercayaan | Label jelas, tidak memengaruhi peringkat, tanpa data pengguna |
+| **Penipuan atas nama Barokahiin** (rekening palsu, pesan palsu) | Rekening resmi satu sumber (CMS-02), peringatan di storefront dan pesan, tidak meminta pembayaran di luar kanal resmi |
+| Kebocoran data donatur/pembeli | Pemisahan API publik/admin, uji field, enkripsi, audit akses, 2FA admin |
+| **Dana tidak transparan atau disalahgunakan** | Catatan penjualan tidak dapat dihapus, koreksi beralasan, laporan dana publik, audit log, rekonsiliasi (P1) |
+| Barang tidak sesuai foto/keterangan | Kurasi dengan checklist, foto multi-sudut, kolom **kekurangan** wajib, kebijakan retur/komplain ditentukan (K) |
+| Barang berasal dari sumber meragukan | Catat asal barang dan donatur; tolak bila mencurigakan |
+| Barang terlarang | Daftar larangan di bawah; admin menolak saat kurasi |
+| Foto/video melanggar privasi (terutama anak) | Persetujuan, pemeriksaan sebelum terbit, kebijakan anak |
+| Admin salah mengubah harga/status | Konfirmasi aksi berisiko, riwayat, audit |
+| Spam di form publik | CAPTCHA/honeypot, pembatasan laju, idempotensi |
+| Pesanan menggantung | Batas waktu bayar otomatis kedaluwarsa |
 
-### Barang dan konten terlarang **[Usulan, berlaku untuk gratis maupun berbayar]**
-Obat resep/obat keras, minuman beralkohol, narkotika, senjata dan bahan berbahaya, barang ilegal atau hasil kejahatan, produk palsu, hewan hidup, konten SARA/kebencian/asusila, dan uang tunai. Untuk makanan: batasi jenis berisiko tinggi sesuai pedoman yang akan ditetapkan. Pakaian dalam bekas dan barang higienis sensitif perlu diputuskan.
+### Barang dan konten terlarang **[Usulan]**
+Obat resep/obat keras, minuman beralkohol, narkotika, senjata dan bahan berbahaya, barang ilegal atau hasil kejahatan, produk palsu, hewan hidup, dan konten SARA/kebencian/asusila. Barang higienis sensitif (misalnya pakaian dalam bekas) dan makanan **perlu diputuskan** (K6).
 
-### Tanggung jawab
-Syarat layanan akan menjelaskan bahwa Barokahiin adalah **penghubung**; kondisi barang dan makanan adalah tanggung jawab Pemberi, dan Penerima memeriksa sendiri sebelum memakai atau membayar. Karena ada **barang berbayar dan penjualan makanan**, redaksi hukum dan aturan yang berlaku perlu dibahas di rapat (Bagian 18).
+### Tanggung jawab dan kepatuhan
+Karena **hasil penjualan barang donasi dipakai untuk pendanaan kegiatan**, aspek hukum dan pelaporan keuangan (termasuk bentuk lembaga, pencatatan, dan cara melaporkan dana) **perlu ditinjau**. Ini ditunda sampai rapat (Bagian 18). Syarat layanan dan kebijakan privasi disusun setelahnya.
+
+### Operasional admin
+Prosedur kurasi, SOP penjemputan, penanganan komplain, dan tim admin ditunda sampai rapat. Sistem sudah menyiapkan **kemampuan**-nya (audit, status, catatan, antrean).
 
 ---
 
 ## 16. Metrik dan analitik
 
 ### Metrik utama (North Star)
-**Jumlah serah terima selesai per minggu.**
+**Dana yang terkumpul untuk kegiatan per bulan (Rupiah).** _(Definisi bruto/bersih di K11.)_
 
 ### Metrik pendukung
 | Area | Metrik |
 |---|---|
-| **Pasokan** | Listing baru/minggu, Pemberi aktif, rasio Pemberi yang memposting lagi, proporsi gratis vs berbayar |
-| **Permintaan** | Penerima aktif, klaim per listing |
-| **Pencocokan** | Waktu dari posting ke klaim pertama; persentase listing yang laku diambil; persentase listing kedaluwarsa tanpa klaim |
-| **Jalur Segera** | Persentase listing Segera yang diambil sebelum batas; waktu dari posting ke klaim pertama untuk Segera |
-| **Pelaksanaan** | Tingkat serah terima selesai dari klaim diterima (dipisah gratis/berbayar); tingkat no-show; tingkat pembatalan |
-| **Kepercayaan** | Laporan per 1.000 listing (termasuk laporan harga/pembayaran); waktu penanganan laporan; akun ditangguhkan |
-| **Kegunaan** | Keberhasilan tugas utama pada uji usability; waktu menyelesaikan posting |
-| **Kesehatan** | Kecepatan halaman, laju error, retensi 7/30 hari, pemasangan PWA |
-| **Sponsor** | Tayangan dan klik agregat per slot (tanpa data pribadi) |
+| **Pasokan** | Barang diajukan/diterima per minggu, donatur baru dan berulang |
+| **Proses** | Waktu diterima → terbit; persentase barang ditolak; barang menumpuk di Diterima/Dikurasi |
+| **Penjualan** | Barang terbit, barang terjual, rasio terjual, waktu dari terbit ke terjual, harga rata-rata |
+| **Konversi** | Pengunjung → lihat detail → permintaan beli → dibayar → selesai |
+| **Pelaksanaan** | Tingkat pembatalan/kedaluwarsa pesanan |
+| **Kepercayaan** | Kunjungan halaman transparansi, laporan dana terbit tepat waktu, jumlah komplain |
+| **Pertumbuhan** | Kunjungan, sumber trafik, tingkat berbagi (klik bagikan/WhatsApp) |
+| **Kesehatan** | Kecepatan halaman, laju error, kegagalan unggah media |
 
 Semua target: **TBD** setelah ada data awal.
 
-### Acara pelacakan (tracking plan, ringkas)
-`app_open`, `pwa_installed`, `onboarding_complete`, `location_permission_result`, `search_performed`, `urgent_tab_viewed`, `listing_viewed`, `listing_draft_started`, `listing_published` (dengan `price_type`), `claim_requested`, `claim_accepted`, `claim_declined`, `handover_completed`, `claim_cancelled`, `claim_no_show`, `report_submitted`, `chat_message_sent`, `sponsor_slot_viewed`, `sponsor_slot_clicked`.
+### Acara pelacakan (ringkas)
+**Storefront:** `page_view`, `catalog_filter_used`, `item_viewed`, `media_played`, `purchase_request_submitted`, `whatsapp_click`, `donation_request_submitted`, `transparency_viewed`, `share_clicked`.
+**Admin:** `item_created`, `item_published`, `request_confirmed`, `payment_recorded`, `activity_report_published`, `media_upload_failed`.
 
-Aturan: **jangan** mengirim data pribadi (nomor HP, alamat, isi chat) ke alat analitik. Lokasi dilaporkan di tingkat wilayah, bukan koordinat.
+Aturan: **jangan** mengirim data pribadi (nama, kontak, isi pesan) ke alat analitik.
 
 ---
 
@@ -705,65 +689,67 @@ Aturan: **jangan** mengirim data pribadi (nomor HP, alamat, isi chat) ke alat an
 
 | Risiko | Dampak | Mitigasi |
 |---|---|---|
-| Wilayah sepi pada awal (cold start) | Pengguna baru tidak menemukan barang | Fokus Bandung, komunitas awal, Pemberi yang dibina, Butuh Barokah (Fase 2) |
-| Aplikasi bergeser menjadi marketplace biasa | Identitas "berbagi yang barokah" hilang | Label tipe harga jelas, barang gratis menjadi sorotan, batasan jenis/harga ditentukan di rapat |
-| Penyalahgunaan (penimbun/penjual kembali) | Hilang kepercayaan | Batas klaim, Klaim Adil, laporan, sanksi |
-| Penipuan harga/pembayaran tanpa perlindungan aplikasi | Kerugian pengguna dan reputasi | Bayar di tempat, harga terkunci, peringatan, laporan cepat |
-| Insiden keamanan saat bertemu | Reputasi dan keselamatan | Lokasi dikaburkan, Titik Ambil aman, panduan, laporan cepat |
-| Insiden makanan | Risiko kesehatan | Atribut wajib, Jalur Segera, batas konsumsi, peringatan, batasan jenis makanan |
-| Pelanggaran data pribadi | Hukum dan reputasi | Minimalisasi data, enkripsi, audit akses, tinjauan hukum (setelah rapat) |
-| Sponsor memengaruhi persepsi netralitas | Kepercayaan menurun | Aturan sponsor tertulis, label jelas, tanpa pengaruh peringkat |
-| Beban moderasi | Kualitas menurun | Alat moderasi, aturan jelas, otomasi bertahap |
-| Koneksi buruk di banyak daerah | Pengalaman rusak | PWA, kompresi, retry, uji pada jaringan lambat |
-| Salah paham konsep "barokah" | Segmen umum merasa tidak diajak | Default netral, fitur Muslim opsional, riset istilah |
+| Arah produk berubah lagi | Pekerjaan terbuang | Arsipkan versi lama; kunci keputusan di Bagian 18 sebelum desain final |
+| Backend/API `digitaldatagenerus` belum jelas | Estimasi dan arsitektur meleset | Putuskan K3 lebih dulu; buat kontrak API tertulis |
+| Kepercayaan publik rendah | Dana tidak terkumpul | Transparansi dana, dokumentasi, rekening resmi, kurasi jujur |
+| Antrean barang menumpuk (kurasi lambat) | Dana tertunda, donatur kecewa | Checklist, dasbor pengingat, tim admin cukup |
+| Unggah foto/video gagal di ponsel | Admin frustrasi | Unggah dapat dilanjutkan, kompres di perangkat, uji jaringan lambat |
+| Pelanggaran privasi donatur/anak | Hukum dan reputasi | Persetujuan, EXIF dihapus, kebijakan anak, audit |
+| Penipuan atas nama Barokahiin | Reputasi dan kerugian pembeli | Kanal resmi tunggal, peringatan |
+| Beban admin untuk memproses pesanan manual | Lambat saat ramai | Antrean jelas, notifikasi, otomatisasi bertahap (Fase 2–3) |
+| Aspek hukum/keuangan terlambat dibahas | Penundaan peluncuran | Jadwalkan rapat sebelum peluncuran publik |
 
 ---
 
 ## 18. Keputusan dan pertanyaan terbuka
 
-### 18.1 Jawaban pemilik produk (17 November 2026) dan dampaknya
+### 18.1 Perubahan dari update 17 November 2026
+| Pernyataan pemilik produk | Dampak pada PRD |
+|---|---|
+| Barang user dikumpulkan datanya dan dijual di website (berbayar) | Model berubah dari antarpengguna ke **katalog yang dikelola admin** |
+| Hasil penjualan untuk pendanaan kegiatan | Modul **Dana** dan **Kegiatan**, serta **Transparansi Dana** sebagai fitur utama |
+| Peran: publik, dan admin yang mengunggah foto/video dan keterangan | Peran **Publik** dan **Admin**; modul **Media** dan kurasi |
+| Dua frontend: digitaldatagenerus (kelola user dan barang) dan tampilan baru (tampilkan barang jual) | **Frontend 1** (admin) dan **Frontend 2** (storefront) dengan API publik dan admin terpisah |
 
-| # | Pertanyaan awal | Jawaban | Dampak pada PRD |
-|---|---|---|---|
-| 1 | Konsep inti | Ada barang gratis dan berbayar; bisa makanan, barang, dan alat, dikategorikan | Tipe harga, modul PRC, aturan harga terkunci, bayar di tempat; non-tujuan "tanpa jual-beli" dihapus; anti-jual-kembali hanya untuk barang gratis |
-| 2 | Segmen | Umum dan komunitas Muslim | Default netral + fitur Muslim opsional (modul COM) |
-| 3 | Platform | PWA dulu | PWA mobile-first sebagai keputusan; native ditunda |
-| 4 | Makanan | Kemasan dan siap saji; yang cepat kedaluwarsa dipisah | Dua jenis makanan, atribut terpisah, **Jalur Segera** (modul URG) |
-| 5 | Verifikasi | Belum diperlukan, tapi disiapkan | Kerangka verifikasi di balik *feature flag*, tidak diwajibkan |
-| 6 | Legal | Dilewati dulu | Ditunda; PRD tetap menandai area yang butuh tinjauan |
-| 7 | Pembiayaan | Sponsor | Modul sponsor (SPN) dan aturan etika sponsor |
-| 8 | Wilayah awal | Bandung dan sekitarnya | Pilot Bandung, strategi cold start, tetap bisa diakses nasional |
-| 9 | Tim moderasi | Dilewati, perlu rapat | Ditunda |
-| 10 | Merek | Dilewati, perlu rapat | Ditunda |
-
-### 18.2 Masih menunggu rapat
-1. **Aspek hukum**: syarat layanan, kebijakan privasi, retensi data, serta aturan untuk **barang berbayar dan penjualan makanan**.
-2. **Tim moderasi**: siapa yang menangani laporan, jam layanan, target waktu, jalur banding.
-3. **Merek**: nama final, logo, nada bahasa, warna.
-
-### 18.3 Keputusan baru yang muncul dari jawaban (mohon diputuskan)
+### 18.2 Keputusan yang perlu dijawab (mendesak: sebelum desain final)
 | # | Keputusan | Usulan saat ini |
 |---|---|---|
-| K1 | **Cara pembayaran barang berbayar** | Bayar di tempat saat serah terima; aplikasi tidak memproses uang (MVP) |
-| K2 | **Biaya/komisi platform** | Tidak ada di MVP (dibiayai sponsor) |
-| K3 | **Batasan barang berbayar** agar tidak menjadi marketplace umum (batas harga, kategori tertentu, atau kuota per pengguna) | Belum ditentukan; perlu diputuskan |
-| K4 | **Tipe "Seikhlasnya"** | Fase 2 |
-| K5 | **Ambang Jalur Segera**: sisa masa layak makanan kemasan, dan jendela ambil maksimum makanan siap saji | Kemasan ≤ 3 hari; jendela siap saji: TBD |
-| K6 | **Aturan sponsor**: jenis sponsor yang diterima/ditolak, penempatan, masa tayang | Slot berlabel, tanpa pengaruh peringkat, tanpa data pengguna |
-| K7 | **Batas wilayah "Bandung dan sekitarnya"** | Kota Bandung, Kota Cimahi, Kab. Bandung, Kab. Bandung Barat |
-| K8 | **Istilah antarmuka** "Pemberi" vs "Penjual" | Diserahkan ke UI/UX berdasarkan riset |
+| **K1** | **Cara pembeli membeli dan membayar**: form/WhatsApp + pembayaran manual, atau checkout online? | MVP: form + WhatsApp, bayar manual ke rekening resmi; checkout online di Fase 3 |
+| **K2** | Apakah **donatur** perlu akun untuk melihat status barangnya, atau hanya dikabari admin? | Tanpa akun di MVP; admin mengabari |
+| **K3** | **digitaldatagenerus**: sudah ada? Apa teknologinya, apakah punya backend/API yang akan dipakai bersama storefront? | Belum diketahui; PRD netral. Kontrak API tertulis diperlukan |
+| **K4** | **Pengiriman**: hanya ambil di tempat (Bandung), atau kirim ke seluruh Indonesia? | Ambil di tempat dulu; pengiriman Fase 3 |
+| **K5** | **Penetapan harga**: oleh admin saja, atau donatur boleh mengusulkan? Dasar harga? | Admin menetapkan; pedoman harga dibuat |
+| **K6** | **Makanan dan barang cepat kedaluwarsa** di storefront? | Tidak di MVP |
+| **K7** | **Video**: batas durasi/ukuran, dan penyimpanan sendiri atau layanan pihak ketiga? | Durasi pendek, penyimpanan terkelola; keputusan teknis bersama BE |
+| **K8** | Model **berbagi antarpengguna v0.2**: dibatalkan atau ditangguhkan sebagai fase lanjutan? | Ditangguhkan (diarsipkan) |
+
+### 18.3 Keputusan yang boleh menyusul
+| # | Keputusan | Usulan |
+|---|---|---|
+| K9 | Struktur peran admin: satu peran, atau Konten/Keuangan terpisah? | Satu peran di MVP, RBAC-ready |
+| K10 | Dukungan sponsor tetap berjalan bersama hasil penjualan? | Ya, Fase 2, berlabel jelas |
+| K11 | Dana yang dilaporkan **bruto atau bersih** (setelah biaya jemput, perbaikan, dll.)? Seberapa rinci laporan publik? | Tampilkan bruto dan bersih dengan rincian pos |
+| K12 | Bentuk **persetujuan donatur** (tertulis, digital, lisan terekam) dan apakah anonim default | Persetujuan tercatat; anonim default |
+| K13 | Kebijakan retur/komplain untuk pembeli | Ditentukan di rapat |
+| K14 | Batas wilayah "Bandung dan sekitarnya" | Kota Bandung, Kota Cimahi, Kab. Bandung, Kab. Bandung Barat |
+
+### 18.4 Masih menunggu rapat (dari jawaban sebelumnya)
+1. **Aspek hukum dan keuangan**: bentuk lembaga, pelaporan dana, penjualan barang donasi, syarat layanan, kebijakan privasi.
+2. **Operasional admin**: tim, jam kerja, SOP kurasi dan penjemputan, penanganan komplain.
+3. **Merek**: nama final, logo, nada bahasa, warna. Termasuk hubungan nama **Barokahiin** dan **digitaldatagenerus**.
 
 ---
 
 ## 19. Peta jalan kasar **[Usulan, tanpa tanggal karena belum ada estimasi tim]**
 
-1. **Penemuan:** rapat keputusan (Bagian 18), riset pengguna di Bandung, putuskan K1–K8
-2. **Desain:** flow → wireframe → desain visual → design system → uji usability
-3. **Pembangunan MVP:** akun, listing, harga, Jalur Segera, penelusuran, klaim, serah terima, chat, notifikasi, moderasi dasar, sponsor dasar, admin dasar
-4. **Uji terbatas** di satu wilayah percontohan Bandung; ukur metrik; perbaiki
-5. **Peluncuran pilot Bandung dan sekitarnya**
-6. **Fase 2:** Butuh Barokah, Seikhlasnya, Rumah Barokah, Undian, Jejak Kebaikan, jendela salat, manajemen sponsor
-7. **Fase 3:** AI, bahasa daerah, pembayaran dalam aplikasi (bila diputuskan), native, perluasan kota
+1. **Penemuan:** putuskan K1–K8, dapatkan informasi digitaldatagenerus (K3), riset singkat dengan donatur, pembeli, dan admin
+2. **Kontrak:** sepakati model data dan **spesifikasi API** (publik + admin) sebagai dasar kerja kedua frontend secara paralel
+3. **Desain:** design system bersama → flow → wireframe → desain visual → uji usability
+4. **Pembangunan MVP:** digitaldatagenerus (donatur, barang, media, pesanan, dana, kegiatan) dan storefront (katalog, detail, permintaan beli, transparansi, donasi barang)
+5. **Uji terbatas:** dengan admin dan sekelompok kecil pembeli di Bandung; ukur metrik; perbaiki
+6. **Peluncuran publik** setelah 2FA admin aktif dan tinjauan hukum selesai
+7. **Fase 2:** Barang↔Kegiatan, kabar ke donatur, penjemputan, alokasi dan rekonsiliasi dana, sponsor, peran admin terpisah
+8. **Fase 3:** pembayaran online, pengiriman, bundel, AI, perluasan wilayah
 
 ---
 
@@ -771,8 +757,27 @@ Aturan: **jangan** mengirim data pribadi (nomor HP, alamat, isi chat) ke alat an
 
 | Tim | Siap diserahkan bila |
 |---|---|
-| **UI/UX → Frontend** | Semua layar MVP punya semua kondisi (termasuk harga berubah dan Segera hampir habis); design system tersedia; spesifikasi responsif dan aksesibilitas ada; copy final |
-| **UI/UX → Backend** | Aturan klaim, harga terkunci, Jalur Segera, status, dan notifikasi terdokumentasi di desain |
-| **Backend → Frontend** | Kontrak API (skema permintaan/respons, kode error, contoh) disepakati dan tersedia lingkungan uji |
-| **Semua → QA** | Kriteria penerimaan per kebutuhan (bagian 10) disepakati; data uji palsu tersedia |
-| **Sebelum rilis** | Keputusan K1–K8 final; tinjauan hukum selesai; prosedur moderasi siap; uji keamanan dasar; uji performa jaringan lambat; rencana respons insiden |
+| **Backend ↔ kedua Frontend** | **Kontrak API** (skema, kode error, contoh) untuk API publik dan admin disepakati; lingkungan uji tersedia |
+| **UI/UX → Frontend 1** | Semua layar admin MVP punya semua kondisi (unggah gagal, video diproses, konflik edit); design system tersedia |
+| **UI/UX → Frontend 2** | Semua layar storefront MVP punya semua kondisi (barang dipesan/terjual/ditarik); spesifikasi responsif dan aksesibilitas; copy final |
+| **UI/UX → Backend** | Aturan status, harga terkunci, syarat terbit, dan notifikasi terdokumentasi |
+| **Semua → QA** | Kriteria penerimaan (Bagian 10) disepakati; data uji palsu tersedia; uji bahwa **data donatur tidak pernah muncul di API publik** |
+| **Sebelum rilis publik** | Keputusan K1–K8 final; 2FA admin aktif; tinjauan hukum dan keuangan selesai; SOP admin siap; uji keamanan dasar; uji performa jaringan lambat; rekening resmi dan peringatan penipuan terpasang; rencana respons insiden |
+
+---
+
+## Lampiran A: Status keputusan dan fitur dari v0.2
+
+| Hal dari v0.1–v0.2 | Status di v0.3 |
+|---|---|
+| Berbagi antarpengguna: klaim, chat, serah terima berkode, Klaim Adil | **Ditangguhkan** (arsip). Dapat dihidupkan sebagai fase lanjutan (K8) |
+| Jalur Segera (makanan cepat kedaluwarsa) | **Ditangguhkan**; makanan tidak di MVP (K6) |
+| Butuh Barokah, Rumah Barokah, Seikhlasnya | **Ditangguhkan** |
+| PWA | Storefront: opsional; **SSR/SSG dan SEO diutamakan**. Admin: web responsif ramah ponsel |
+| Fokus Bandung dan sekitarnya | **Berlaku** (pengumpulan dan pilot); storefront dapat diakses nasional |
+| Verifikasi pengguna disiapkan | **Tidak relevan** untuk publik/donatur di MVP; yang berlaku adalah **keamanan akun admin (2FA)** |
+| Sponsor | **Berlaku**, Fase 2 |
+| Label anonim ("Hamba Allah"/Sahabat Berbagi) | **Berlaku** untuk donatur |
+| Kategori perlengkapan ibadah, segmen umum + komunitas Muslim | **Berlaku** (netral default, opsi komunitas) |
+| Privasi minimal, tidak meminta NIK | **Berlaku** |
+| Hukum, moderasi, merek ditunda | **Berlaku** (moderasi menjadi "operasional admin") |

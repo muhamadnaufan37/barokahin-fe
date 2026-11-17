@@ -9,10 +9,10 @@ export default defineConfig({
       registerType: "autoUpdate",
       includeAssets: ["favicon.svg"],
       manifest: {
-        name: "Barokahiin — Berbagi Dekat Rumah",
+        name: "Barokahiin — Storefront Barang Donasi Terkurasi",
         short_name: "Barokahiin",
         description:
-          "Berbagi yang barokah, dekat dari rumahmu. Temukan dan bagikan barang layak pakai serta makanan berlebih di sekitar Bandung.",
+          "Barang yang kamu beli, kebaikan yang kita danai. Katalog barang donasi terkurasi dengan transparansi dana.",
         theme_color: "#0d9488",
         background_color: "#f8fafc",
         display: "standalone",
