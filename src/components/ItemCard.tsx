@@ -1,5 +1,7 @@
 import React from "react";
 import { Link } from "react-router-dom";
+import { Button } from "primereact/button";
+import { useBuyer } from "../context/BuyerContext";
 import { resolveMediaUrl } from "../services/publicApi";
 import { PublicItem } from "../types";
 import { formatRupiah, getConditionLabel } from "../utils/format";
@@ -12,80 +14,66 @@ interface ItemCardProps {
 export const ItemCard: React.FC<ItemCardProps> = ({ item }) => {
   const coverSrc = resolveMediaUrl(item.cover_url);
   const isSold = item.status === "terjual";
+  const { favorites, toggleFavorite } = useBuyer();
+  const isFavorite = favorites.includes(item.uuid);
 
   return (
-    <Link
-      to={`/barang/${item.slug}`}
-      className={`group flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-brand-500/50 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-brand-500 ${
-        isSold ? "opacity-90" : ""
-      }`}
-    >
-      <div className="relative aspect-[4/3] w-full overflow-hidden bg-slate-100">
-        {coverSrc ? (
-          <img
-            src={coverSrc}
-            alt={item.judul}
-            loading="lazy"
-            className={`h-full w-full object-cover transition-transform duration-300 group-hover:scale-105 ${
-              isSold ? "grayscale-[30%]" : ""
-            }`}
-          />
-        ) : (
-          <div className="flex h-full w-full flex-col items-center justify-center gap-1.5 text-slate-400">
-            <i className="pi pi-image text-2xl" aria-hidden="true" />
-            <span className="text-xs">Foto segera tersedia</span>
-          </div>
-        )}
-
-        <div className="absolute left-3 top-3">
-          <StatusBadge status={item.status} label={item.status_label} />
-        </div>
-
-        <div className="absolute bottom-2.5 right-2.5 rounded-lg bg-slate-900/75 px-2 py-0.5 text-[11px] font-medium text-white backdrop-blur-sm">
-          {getConditionLabel(item.kondisi_grade)}
-        </div>
-      </div>
-
-      <div className="flex flex-1 flex-col justify-between p-4">
-        <div>
-          <div className="mb-1.5 flex items-center justify-between gap-2 text-[11px] font-medium text-slate-500">
-            <span className="truncate text-brand-700">
-              {item.kategori?.nama || "Barang Barokah"}
-            </span>
-            <span className="shrink-0 font-mono text-[10px] text-slate-400">
-              {item.kode_barang}
-            </span>
-          </div>
-
-          <h3 className="line-clamp-2 text-sm font-semibold leading-snug text-slate-900 group-hover:text-brand-700 sm:text-base">
-            {item.judul}
-          </h3>
-
-          {item.kegiatan && (
-            <p className="mt-1.5 inline-flex items-center gap-1 rounded-md bg-brand-50 px-2 py-0.5 text-[11px] font-medium text-brand-800">
-              <i className="pi pi-heart text-[10px]" aria-hidden="true" />
-              <span className="line-clamp-1">Dana: {item.kegiatan.judul}</span>
-            </p>
+    <article className={`item-card ${isSold ? "is-sold" : ""}`}>
+      <Link
+        to={`/barang/${item.slug}`}
+        className="item-card-link"
+        aria-label={`${item.judul}, ${formatRupiah(item.harga_rupiah)}, ${getConditionLabel(item.kondisi_grade)}`}
+      >
+        <div className="item-card-image">
+          {coverSrc ? (
+            <img
+              src={coverSrc}
+              alt={`${item.judul}, ${getConditionLabel(item.kondisi_grade)}`}
+              loading="lazy"
+              decoding="async"
+              sizes="(max-width: 767px) 48vw, (max-width: 1023px) 30vw, 23vw"
+            />
+          ) : (
+            <div className="flex h-full flex-col items-center justify-center gap-2 text-indigo-900/60">
+              <i className="pi pi-image text-2xl" aria-hidden="true" />
+              <span className="text-xs">Foto belum tersedia</span>
+            </div>
           )}
+
+          <div className="item-card-status">
+            <StatusBadge status={item.status} label={item.status_label} />
+          </div>
+          <span className="item-card-code">{item.kode_barang}</span>
         </div>
 
-        <div className="mt-3 border-t border-slate-100 pt-3">
-          <div className="flex items-baseline justify-between gap-2">
-            <span className="text-base font-bold text-slate-900 sm:text-lg">
-              {formatRupiah(item.harga_rupiah)}
+        <div className="item-card-body">
+          <span className="item-card-category">
+            {item.kategori?.nama || "Barang terkurasi"}
+          </span>
+          <h3 className="item-card-title">{item.judul}</h3>
+          {item.kegiatan && (
+            <span className="inline-flex max-w-full items-center gap-1.5 truncate rounded-md bg-emerald-50 px-2 py-1 text-[11px] font-medium text-emerald-900">
+              <i className="pi pi-heart text-[10px]" aria-hidden="true" />
+              <span className="truncate">Mendukung {item.kegiatan.judul}</span>
             </span>
-            {item.stok_tersedia > 0 && item.status === "terbit" && (
-              <span className="text-[11px] text-slate-500">
-                Stok: {item.stok_tersedia}
-              </span>
-            )}
+          )}
+          <div className="item-card-meta">
+            <span className="item-card-price">{formatRupiah(item.harga_rupiah)}</span>
+            <span className="item-card-grade">
+              {getConditionLabel(item.kondisi_grade)}
+            </span>
           </div>
-          <p className="mt-1 flex items-center gap-1.5 text-[11px] text-slate-500">
-            <i className="pi pi-user text-[10px] text-brand-600" aria-hidden="true" />
-            <span>Dari {item.donor_label || "Sahabat Berbagi"}</span>
-          </p>
         </div>
-      </div>
-    </Link>
+      </Link>
+      <Button
+        className="item-favorite-button"
+        type="button"
+        aria-label={isFavorite ? `Hapus ${item.judul} dari favorit` : `Simpan ${item.judul} ke favorit`}
+        aria-pressed={isFavorite}
+        onClick={() => toggleFavorite(item.uuid)}
+      >
+        <i className={isFavorite ? "pi pi-heart-fill" : "pi pi-heart"} aria-hidden="true" />
+      </Button>
+    </article>
   );
 };

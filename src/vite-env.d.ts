@@ -3,6 +3,7 @@
 interface ImportMetaEnv {
   readonly VITE_API_BASE_URL: string;
   readonly VITE_API_PUBLIC_PREFIX: string;
+  readonly VITE_API_WILAYAH_PREFIX: string;
   readonly VITE_APP_NAME: string;
   readonly VITE_APP_TAGLINE: string;
 }

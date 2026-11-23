@@ -1,34 +1,77 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
+import { gsap } from "gsap";
 import { Message } from "primereact/message";
 import { ProgressBar } from "primereact/progressbar";
 import { Skeleton } from "primereact/skeleton";
 import { Tag } from "primereact/tag";
 import { ItemCard } from "../components/ItemCard";
+import { RegionPicker } from "../components/RegionPicker";
 import { TrustPaymentBanner } from "../components/TrustPaymentBanner";
+import { useBuyer } from "../context/BuyerContext";
 import { useStorefront } from "../context/StorefrontContext";
 import { publicApi } from "../services/publicApi";
-import { PublicActivity, PublicItem } from "../types";
+import { PublicActivity, PublicItem, PublicStore } from "../types";
 import { formatRupiah } from "../utils/format";
+import { setPageMetadata } from "../utils/seo";
+
+const STEPS = [
+  {
+    title: "Barang diserahkan",
+    description:
+      "Donatur mengajukan barang layak pakai dan memberi izin untuk dijual.",
+  },
+  {
+    title: "Dikurasi dengan jujur",
+    description:
+      "Koordinator memeriksa kondisi, mencatat kekurangan, dan menyiapkan barang.",
+  },
+  {
+    title: "Kamu memesan",
+    description:
+      "Masukkan barang ke keranjang, lengkapi data, lalu periksa pesanan sebelum konfirmasi.",
+  },
+  {
+    title: "Bayar dan lacak",
+    description:
+      "Bayar melalui QRIS, virtual account, atau e-wallet. Dana kegiatan dicatat dan dilaporkan.",
+  },
+];
 
 export const HomePage: React.FC = () => {
-  const { impact, settings } = useStorefront();
+  const { impact, settings, categories } = useStorefront();
+  const { selectedRegion, setSelectedRegion } = useBuyer();
   const [items, setItems] = useState<PublicItem[]>([]);
   const [activities, setActivities] = useState<PublicActivity[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
+  const [stores, setStores] = useState<PublicStore[]>([]);
+  const [activityError, setActivityError] = useState<string | null>(null);
+  const [storeError, setStoreError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const receiptRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
-    document.title =
-      "Barokahiin — Barang yang kamu beli, kebaikan yang kita danai";
+    setPageMetadata({
+      title: "Barokahiin — Barang layak pakai, kebaikan yang tercatat",
+      description:
+        "Temukan barang layak pakai yang dikurasi. Setiap penjualan mendukung kegiatan sosial dan keagamaan dengan laporan dana transparan.",
+      path: "/",
+    });
     let active = true;
 
     const loadHomeData = async () => {
       setLoading(true);
       setError(null);
-      const [itemsRes, activitiesRes] = await Promise.allSettled([
-        publicApi.getItems({ per_page: 6, sort: "terbaru" }),
+      setActivityError(null);
+      setStoreError(null);
+      const [itemsRes, activitiesRes, storesRes] = await Promise.allSettled([
+        publicApi.getItems({
+          per_page: 6,
+          sort: "terbaru",
+          region: selectedRegion?.id,
+        }),
         publicApi.getActivities(),
+        publicApi.getStores(),
       ]);
 
       if (!active) return;
@@ -39,14 +82,28 @@ export const HomePage: React.FC = () => {
         setError(
           itemsRes.reason instanceof Error
             ? itemsRes.reason.message
-            : "Gagal memuat sorotan barang."
+            : "Sorotan barang belum bisa dimuat."
         );
       }
 
       if (activitiesRes.status === "fulfilled") {
         setActivities(activitiesRes.value.slice(0, 3));
+      } else {
+        setActivityError(
+          activitiesRes.reason instanceof Error
+            ? activitiesRes.reason.message
+            : "Kegiatan belum bisa dimuat."
+        );
       }
-
+      if (storesRes.status === "fulfilled") {
+        setStores(storesRes.value.slice(0, 3));
+      } else {
+        setStoreError(
+          storesRes.reason instanceof Error
+            ? storesRes.reason.message
+            : "Daftar toko belum bisa dimuat."
+        );
+      }
       setLoading(false);
     };
 
@@ -54,281 +111,355 @@ export const HomePage: React.FC = () => {
     return () => {
       active = false;
     };
+  }, [selectedRegion?.id]);
+
+  useEffect(() => {
+    const receipt = receiptRef.current;
+    if (!receipt || window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      return;
+    }
+
+    const animation = gsap.fromTo(
+      receipt,
+      { opacity: 0, y: -14, scaleY: 0.96, transformOrigin: "top center" },
+      { opacity: 1, y: 0, scaleY: 1, duration: 0.58, ease: "power2.out" }
+    );
+    return () => {
+      animation.kill();
+    };
   }, []);
 
   return (
-    <div className="space-y-10">
-      {/* Hero */}
-      <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-brand-700 via-brand-600 to-teal-500 px-6 py-10 text-white shadow-lg sm:px-10 sm:py-14">
-        <div className="relative z-10 max-w-2xl space-y-4">
-          <span className="inline-flex items-center gap-2 rounded-full bg-white/15 px-3 py-1 text-xs font-semibold backdrop-blur-sm">
-            <i className="pi pi-verified text-xs" aria-hidden="true" />
-            <span>Terkurasi Jujur · Dana Terlapor Terbuka</span>
-          </span>
-          <h1 className="text-2xl font-bold leading-tight sm:text-4xl">
-            Barang yang kamu beli, kebaikan yang kita danai.
+    <div className="home-page">
+      <section className="home-hero" aria-labelledby="home-title">
+        <div className="home-hero-copy">
+          <h1 id="home-title">
+            Barang layak pakai, kebaikan yang tercatat.
           </h1>
-          <p className="text-sm leading-relaxed text-teal-50 sm:text-base">
-            Setiap barang layak dari donatur dikurasi kondisi dan harganya oleh
-            admin, dijual secara transparan, dan seluruh hasilnya disalurkan
-            untuk mendanai kegiatan sosial & keagamaan.
+          <p>
+            Temukan barang pilihan dari warga. Setiap prosesnya dikurasi dengan
+            jujur dan hasil penjualannya mendukung kegiatan yang bisa kamu ikuti.
           </p>
-          <div className="flex flex-wrap gap-3 pt-2">
-            <Link
-              to="/katalog"
-              className="inline-flex min-h-[44px] items-center gap-2 rounded-xl bg-white px-5 py-2.5 text-sm font-semibold text-brand-800 shadow-sm transition hover:bg-teal-50"
-            >
-              <i className="pi pi-shopping-bag text-sm" aria-hidden="true" />
-              <span>Jelajahi Katalog</span>
+          <div className="home-hero-actions">
+            <Link to="/katalog">
+              <i className="pi pi-shopping-bag" aria-hidden="true" />
+              <span>Lihat barang</span>
             </Link>
-            <Link
-              to="/donasi-barang"
-              className="inline-flex min-h-[44px] items-center gap-2 rounded-xl border border-white/40 bg-white/10 px-5 py-2.5 text-sm font-semibold text-white backdrop-blur-sm transition hover:bg-white/20"
-            >
-              <i className="pi pi-gift text-sm" aria-hidden="true" />
-              <span>Ajukan Donasi Barang</span>
+            <Link to="/donasi-barang" className="secondary">
+              <i className="pi pi-gift" aria-hidden="true" />
+              <span>Titip donasi</span>
             </Link>
           </div>
+          <div className="home-region-picker">
+            <RegionPicker
+              label="Pilih wilayah untuk melihat barang sekitar"
+              value={selectedRegion?.id || ""}
+              path={selectedRegion?.path}
+              onChange={(region, path) =>
+                setSelectedRegion(
+                  region ? { id: region.id, nama: region.nama, path } : null
+                )
+              }
+            />
+            {selectedRegion && (
+              <p className="text-xs text-slate-600">
+                Barang di sekitar: <strong>{selectedRegion.nama}</strong>
+              </p>
+            )}
+          </div>
         </div>
+
+        <aside
+          ref={receiptRef}
+          className="home-receipt"
+          aria-labelledby="receipt-title"
+        >
+          <div className="receipt-top">
+            <span className="receipt-seal" aria-hidden="true">
+              <i className="pi pi-check" />
+            </span>
+            <h2 id="receipt-title">Kuitansi kebaikan</h2>
+            <p>
+              Jejak pembelian dan dana kegiatan disajikan terbuka, bukan
+              disembunyikan di balik transaksi.
+            </p>
+          </div>
+          <hr className="receipt-rule" />
+          <dl className="receipt-lines">
+            <div>
+              <dt>Barang terkurasi</dt>
+              <dd>Dicatat</dd>
+            </div>
+            <div>
+              <dt>Biaya transaksi</dt>
+              <dd>Dirinci</dd>
+            </div>
+            <div>
+              <dt>Dana kegiatan</dt>
+              <dd>Dilaporkan</dd>
+            </div>
+          </dl>
+          <p className="receipt-note">
+            Rincian nilai mengikuti laporan transaksi dan kegiatan yang
+            diterbitkan.
+          </p>
+        </aside>
       </section>
 
-      {/* Ringkasan Dampak */}
-      <section aria-label="Ringkasan dampak Barokahiin" className="space-y-3">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-bold text-slate-900 sm:text-xl">
-            Ringkasan Dampak
-          </h2>
-          <Link
-            to="/kegiatan"
-            className="inline-flex min-h-[40px] items-center gap-1.5 text-sm font-semibold text-brand-700 hover:underline"
-          >
-            <span>Lihat Transparansi Dana</span>
-            <i className="pi pi-arrow-right text-xs" aria-hidden="true" />
+      {categories.length > 0 && (
+        <section className="home-section" aria-labelledby="home-categories-title">
+          <div className="home-section-heading">
+            <div>
+              <h2 id="home-categories-title">Jelajahi kategori</h2>
+              <p>Pilih jenis barang yang sedang kamu cari.</p>
+            </div>
+          </div>
+          <div className="category-chip-list">
+            {categories.map((category) => (
+              <Link
+                className="category-chip"
+                key={category.uuid}
+                to={`/katalog?kategori=${encodeURIComponent(category.slug)}`}
+              >
+                {category.nama}
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
+
+      <section className="home-section" aria-labelledby="home-stores-title">
+        <div className="home-section-heading">
+          <div>
+            <h2 id="home-stores-title">
+              Toko di {selectedRegion?.nama || "wilayah pilot"}
+            </h2>
+            <p>Kenali koordinator lokal yang mengkurasi barang.</p>
+          </div>
+          <Link to="/toko">
+            <span>Lihat semua toko</span>
+            <i className="pi pi-arrow-up-right" aria-hidden="true" />
           </Link>
         </div>
-
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
-          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-            <p className="text-xs font-medium text-slate-500">Dana Terkumpul</p>
-            <p className="mt-1 text-lg font-bold text-brand-700 sm:text-xl">
-              {impact ? formatRupiah(impact.total_dana_terkumpul_rupiah) : "—"}
-            </p>
+        {storeError ? (
+          <Message severity="error" text={storeError} className="w-full justify-start" />
+        ) : stores.filter((store) =>
+          selectedRegion
+            ? store.area_publik
+                .toLocaleLowerCase("id-ID")
+                .includes(selectedRegion.nama.toLocaleLowerCase("id-ID"))
+            : true
+        ).length ? (
+          <div className="store-strip">
+            {stores
+              .filter((store) =>
+                selectedRegion
+                  ? store.area_publik
+                      .toLocaleLowerCase("id-ID")
+                      .includes(selectedRegion.nama.toLocaleLowerCase("id-ID"))
+                  : true
+              )
+              .map((store) => (
+              <Link className="store-mini-card" to={`/toko/${store.slug}`} key={store.uuid}>
+                <strong>{store.nama}</strong>
+                <span>{store.area_publik}</span>
+                <small>
+                  {store.rating_count > 0 && store.rating_avg !== null
+                    ? `${store.rating_avg.toFixed(1)} · ${store.rating_count} ulasan`
+                    : "Toko baru"}
+                </small>
+              </Link>
+              ))}
           </div>
-          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-            <p className="text-xs font-medium text-slate-500">Barang Terjual</p>
-            <p className="mt-1 text-lg font-bold text-slate-900 sm:text-xl">
-              {impact ? impact.total_barang_terjual : "—"}
-            </p>
-          </div>
-          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-            <p className="text-xs font-medium text-slate-500">
-              Barang Tersedia
-            </p>
-            <p className="mt-1 text-lg font-bold text-slate-900 sm:text-xl">
-              {impact ? impact.total_barang_tersedia : "—"}
-            </p>
-          </div>
-          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-            <p className="text-xs font-medium text-slate-500">
-              Kegiatan Terdanai
-            </p>
-            <p className="mt-1 text-lg font-bold text-slate-900 sm:text-xl">
-              {impact ? impact.total_kegiatan_terdanai : "—"}
-            </p>
-          </div>
-        </div>
+        ) : (
+          !loading && <p className="form-card">Belum ada toko aktif di wilayah ini.</p>
+        )}
       </section>
 
-      {/* Sorotan Barang */}
-      <section className="space-y-4">
-        <div className="flex items-center justify-between">
+      <section className="home-section" aria-labelledby="latest-items-title">
+        <div className="home-section-heading">
           <div>
-            <h2 className="text-lg font-bold text-slate-900 sm:text-xl">
-              Sorotan Barang Pilihan
-            </h2>
-            <p className="text-xs text-slate-500 sm:text-sm">
-              Sudah dikurasi kondisi dan kekurangannya secara jujur.
-            </p>
+            <h2 id="latest-items-title">Barang terbaru</h2>
+            <p>Temukan barang yang sudah diperiksa dan dijelaskan apa adanya.</p>
           </div>
-          <Link
-            to="/katalog"
-            className="inline-flex min-h-[44px] items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100"
-          >
-            <span>Semua Barang</span>
-            <i className="pi pi-arrow-right text-xs" aria-hidden="true" />
+          <Link to="/katalog">
+            <span>Lihat semua</span>
+            <i className="pi pi-arrow-up-right" aria-hidden="true" />
           </Link>
         </div>
 
         {loading ? (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {Array.from({ length: 6 }).map((_, idx) => (
-              <Skeleton key={idx} height="18rem" borderRadius="1rem" />
+          <div className="home-item-grid" aria-label="Memuat barang terbaru">
+            {Array.from({ length: 6 }).map((_, index) => (
+              <Skeleton key={index} height="21rem" borderRadius="0.75rem" />
             ))}
           </div>
         ) : error ? (
-          <Message severity="error" text={error} className="w-full justify-start" />
-        ) : items.length === 0 ? (
-          <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center">
-            <p className="text-sm font-semibold text-slate-700">
-              Belum ada barang yang diterbitkan saat ini.
-            </p>
-            <p className="mt-1 text-xs text-slate-500">
-              Anda dapat menjadi donatur pertama dengan mengajukan donasi barang.
-            </p>
-            <Link
-              to="/donasi-barang"
-              className="mt-4 inline-flex min-h-[44px] items-center gap-2 rounded-xl bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700"
-            >
-              Ajukan Donasi Barang
-            </Link>
-          </div>
-        ) : (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <Message
+            severity="error"
+            text={`${error} Buka katalog untuk mencoba lagi.`}
+            className="w-full justify-start"
+          />
+        ) : items.length ? (
+          <div className="home-item-grid">
             {items.map((item) => (
               <ItemCard key={item.uuid} item={item} />
             ))}
           </div>
+        ) : (
+          <div className="rounded-xl border border-dashed border-slate-400 bg-white p-7">
+            <h3 className="m-0 text-base font-bold text-slate-900">
+              Belum ada barang baru
+            </h3>
+            <p className="mb-4 mt-2 max-w-xl text-sm text-slate-600">
+              Katalog akan menampilkan barang setelah selesai dikurasi. Kamu
+              bisa kembali melihatnya nanti atau mengajukan donasi barang.
+            </p>
+            <Link to="/donasi-barang" className="home-text-link">
+              Ajukan donasi barang
+              <i className="pi pi-arrow-up-right" aria-hidden="true" />
+            </Link>
+          </div>
         )}
       </section>
 
-      {/* Kegiatan Berjalan */}
-      {activities.length > 0 && (
-        <section className="space-y-4">
-          <div className="flex items-center justify-between">
+      <section className="home-section" aria-labelledby="impact-title">
+        <div className="home-section-heading">
+          <div>
+            <h2 id="impact-title">Kebaikan yang tercatat</h2>
+            <p>Ringkasan dari data publik Barokahiin.</p>
+          </div>
+          <Link to="/kegiatan">
+            <span>Lihat laporan</span>
+            <i className="pi pi-arrow-up-right" aria-hidden="true" />
+          </Link>
+        </div>
+
+        <div className="home-impact-grid">
+          {impact ? (
+            <>
+              <div className="home-impact-item">
+                <span>Dana terkumpul</span>
+                <strong>{formatRupiah(impact.total_dana_kebaikan_idr)}</strong>
+              </div>
+              <div className="home-impact-item">
+                <span>Barang terjual</span>
+                <strong>{impact.total_barang_terjual.toLocaleString("id-ID")}</strong>
+              </div>
+              <div className="home-impact-item">
+                <span>Barang tersedia</span>
+                <strong>{impact.total_barang_tersedia.toLocaleString("id-ID")}</strong>
+              </div>
+              <div className="home-impact-item">
+                <span>Kegiatan terdanai</span>
+                <strong>{impact.total_program_terdanai.toLocaleString("id-ID")}</strong>
+              </div>
+            </>
+          ) : (
+            <p className="home-impact-empty">
+              Ringkasan dampak belum tersedia. Lihat halaman kegiatan untuk
+              laporan terbaru.
+            </p>
+          )}
+        </div>
+      </section>
+
+      <section className="home-section" aria-labelledby="how-title">
+        <div className="home-section-heading">
+          <div>
+            <h2 id="how-title">Dari barang menjadi manfaat</h2>
+            <p>Alur yang jelas, dari penyerahan sampai laporan kegiatan.</p>
+          </div>
+          <Link to="/cara-kerja">
+            <span>Cara kerja</span>
+            <i className="pi pi-arrow-up-right" aria-hidden="true" />
+          </Link>
+        </div>
+        <ol className="home-steps">
+          {STEPS.map((step, index) => (
+            <li className="home-step" key={step.title}>
+              <span className="home-step-number">{index + 1}</span>
+              <h3>{step.title}</h3>
+              <p>{step.description}</p>
+            </li>
+          ))}
+        </ol>
+      </section>
+
+      {activityError ? (
+        <section className="home-section" aria-labelledby="activities-title">
+          <div className="home-section-heading">
             <div>
-              <h2 className="text-lg font-bold text-slate-900 sm:text-xl">
-                Kegiatan yang Didanai
-              </h2>
-              <p className="text-xs text-slate-500 sm:text-sm">
-                Pantau progres dana dan laporan penggunaannya secara terbuka.
-              </p>
+              <h2 id="activities-title">Kegiatan yang didukung</h2>
+              <p>Laporan kegiatan belum dapat dimuat saat ini.</p>
             </div>
-            <Link
-              to="/kegiatan"
-              className="inline-flex min-h-[44px] items-center gap-1.5 text-sm font-semibold text-brand-700 hover:underline"
-            >
-              <span>Lihat Semua</span>
-              <i className="pi pi-arrow-right text-xs" aria-hidden="true" />
+            <Link to="/kegiatan">
+              <span>Buka laporan</span>
+              <i className="pi pi-arrow-up-right" aria-hidden="true" />
             </Link>
           </div>
-
-          <div className="grid gap-4 md:grid-cols-3">
-            {activities.map((act) => {
-              const pct =
-                act.target_dana > 0
+          <Message
+            severity="error"
+            text={activityError}
+            className="w-full justify-start"
+          />
+        </section>
+      ) : activities.length > 0 ? (
+        <section className="home-section" aria-labelledby="activities-title">
+          <div className="home-section-heading">
+            <div>
+              <h2 id="activities-title">Kegiatan yang didukung</h2>
+              <p>Lihat tujuan, progres, dan catatan penggunaan dana.</p>
+            </div>
+            <Link to="/kegiatan">
+              <span>Semua kegiatan</span>
+              <i className="pi pi-arrow-up-right" aria-hidden="true" />
+            </Link>
+          </div>
+          <div className="home-activity-grid">
+            {activities.map((activity) => {
+              const progress =
+                activity.target_dana > 0
                   ? Math.min(
                       100,
                       Math.round(
-                        (act.dana_terkumpul_rupiah / act.target_dana) * 100
+                        (activity.dana_terkumpul_rupiah /
+                          activity.target_dana) *
+                          100
                       )
                     )
                   : 0;
               return (
                 <Link
-                  key={act.uuid}
-                  to={`/kegiatan/${act.slug}`}
-                  className="flex flex-col justify-between rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:border-brand-500/50 hover:shadow-md"
+                  key={activity.uuid}
+                  to={`/kegiatan/${activity.slug}`}
+                  className="home-activity-card"
                 >
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between gap-2">
-                      <Tag
-                        value={act.status === "aktif" ? "Aktif" : "Selesai"}
-                        severity={act.status === "aktif" ? "success" : "secondary"}
-                        rounded
-                        className="px-2.5 py-0.5 text-[11px]"
-                      />
-                      {act.periode && (
-                        <span className="text-xs text-slate-500">
-                          {act.periode}
-                        </span>
-                      )}
-                    </div>
-                    <h3 className="text-base font-bold text-slate-900">
-                      {act.judul}
-                    </h3>
-                    <p className="line-clamp-2 text-xs leading-relaxed text-slate-600">
-                      {act.deskripsi}
-                    </p>
+                  <div>
+                    <Tag
+                      value={activity.status === "aktif" ? "Berjalan" : "Selesai"}
+                      icon={activity.status === "aktif" ? "pi pi-clock" : "pi pi-check"}
+                      severity={activity.status === "aktif" ? "success" : "secondary"}
+                      rounded
+                    />
+                    <h3>{activity.judul}</h3>
+                    <p>{activity.deskripsi}</p>
                   </div>
-
-                  <div className="mt-4 space-y-1.5">
-                    <div className="flex justify-between text-xs">
-                      <span className="font-semibold text-brand-700">
-                        {formatRupiah(act.dana_terkumpul_rupiah)}
-                      </span>
-                      <span className="text-slate-500">
-                        Target {formatRupiah(act.target_dana)}
-                      </span>
+                  <div>
+                    <div className="home-activity-total">
+                      <strong>
+                        Terkumpul {formatRupiah(activity.dana_terkumpul_rupiah)}
+                      </strong>
+                      <span>{progress}% dari target</span>
                     </div>
-                    <ProgressBar value={pct} showValue={false} className="h-2" />
-                    <p className="text-[11px] text-slate-500">
-                      Dana terpakai: {formatRupiah(act.total_penggunaan_rupiah)}
-                    </p>
+                    <ProgressBar value={progress} showValue={false} className="mt-2 h-2" />
                   </div>
                 </Link>
               );
             })}
           </div>
         </section>
-      )}
-
-      {/* Cara Kerja Singkat */}
-      <section className="rounded-3xl border border-slate-200 bg-white p-6 sm:p-8">
-        <div className="mb-6 flex flex-col justify-between gap-2 sm:flex-row sm:items-end">
-          <div>
-            <h2 className="text-lg font-bold text-slate-900 sm:text-xl">
-              Bagaimana Barokahiin Bekerja?
-            </h2>
-            <p className="text-xs text-slate-500 sm:text-sm">
-              Alur sederhana dari barang tak terpakai menjadi manfaat nyata.
-            </p>
-          </div>
-          <Link
-            to="/cara-kerja"
-            className="text-sm font-semibold text-brand-700 hover:underline"
-          >
-            Pelajari selengkapnya →
-          </Link>
-        </div>
-
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {[
-            {
-              step: "1",
-              title: "Donatur Ajukan Barang",
-              desc: "Isi form donasi tanpa perlu login. Identitas dijaga sebagai Sahabat Berbagi.",
-            },
-            {
-              step: "2",
-              title: "Admin Kurasi Jujur",
-              desc: "Foto multi-sudut, video, cek fungsi, catat kekurangan, dan tetapkan harga wajar.",
-            },
-            {
-              step: "3",
-              title: "Publik Membeli",
-              desc: "Kirim permintaan beli atau pesan via WhatsApp, lalu bayar ke rekening resmi.",
-            },
-            {
-              step: "4",
-              title: "Dana & Laporan Terbuka",
-              desc: "Hasil penjualan mendanai kegiatan dan dilaporkan secara transparan.",
-            },
-          ].map((item) => (
-            <div
-              key={item.step}
-              className="rounded-2xl border border-slate-100 bg-slate-50 p-4"
-            >
-              <div className="mb-2 flex h-8 w-8 items-center justify-center rounded-lg bg-brand-600 text-xs font-bold text-white">
-                {item.step}
-              </div>
-              <h3 className="text-sm font-bold text-slate-900">{item.title}</h3>
-              <p className="mt-1 text-xs leading-relaxed text-slate-600">
-                {item.desc}
-              </p>
-            </div>
-          ))}
-        </div>
-      </section>
+      ) : null}
 
       <TrustPaymentBanner settings={settings} />
     </div>

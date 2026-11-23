@@ -8,6 +8,7 @@ import { useStorefront } from "../context/StorefrontContext";
 import { publicApi } from "../services/publicApi";
 import { PublicActivity } from "../types";
 import { formatDateId, formatRupiah } from "../utils/format";
+import { setPageMetadata } from "../utils/seo";
 
 export const ActivitiesPage: React.FC = () => {
   const { impact } = useStorefront();
@@ -16,7 +17,12 @@ export const ActivitiesPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    document.title = "Kegiatan & Transparansi Dana — Barokahiin";
+    setPageMetadata({
+      title: "Kegiatan & Transparansi Dana — Barokahiin",
+      description:
+        "Lihat kegiatan sosial dan keagamaan yang didanai serta laporan penggunaan dana Barokahiin.",
+      path: "/kegiatan",
+    });
     let active = true;
 
     const load = async () => {
@@ -64,7 +70,7 @@ export const ActivitiesPage: React.FC = () => {
               Total Dana Terkumpul
             </p>
             <p className="mt-1 text-lg font-bold text-brand-900 sm:text-xl">
-              {formatRupiah(impact.total_dana_terkumpul_rupiah)}
+              {formatRupiah(impact.total_dana_kebaikan_idr)}
             </p>
           </div>
           <div className="rounded-2xl border border-slate-200 bg-white p-4">
@@ -86,7 +92,7 @@ export const ActivitiesPage: React.FC = () => {
               Kegiatan Terdanai
             </p>
             <p className="mt-1 text-lg font-bold text-slate-900 sm:text-xl">
-              {impact.total_kegiatan_terdanai}
+              {impact.total_program_terdanai}
             </p>
           </div>
         </div>
@@ -142,6 +148,13 @@ export const ActivitiesPage: React.FC = () => {
                   <h2 className="text-lg font-bold text-slate-900">
                     {act.judul}
                   </h2>
+                  {(act.wilayah || act.penerima_manfaat_desc) && (
+                    <p className="text-xs font-medium text-slate-500">
+                      {[act.wilayah, act.penerima_manfaat_desc]
+                        .filter(Boolean)
+                        .join(" · ")}
+                    </p>
+                  )}
                   <p className="line-clamp-3 text-sm leading-relaxed text-slate-600">
                     {act.deskripsi}
                   </p>
@@ -166,7 +179,9 @@ export const ActivitiesPage: React.FC = () => {
                     <span>
                       Total digunakan:{" "}
                       <strong className="text-slate-700">
-                        {formatRupiah(act.total_penggunaan_rupiah)}
+                        {act.total_penggunaan_rupiah === null
+                          ? "Belum dilaporkan"
+                          : formatRupiah(act.total_penggunaan_rupiah)}
                       </strong>
                     </span>
                     <span className="font-semibold text-brand-700">

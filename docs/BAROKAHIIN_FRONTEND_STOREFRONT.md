@@ -3,6 +3,7 @@
 Dokumen ini khusus untuk tim **Frontend Storefront Barokahiin** yang mengonsumsi:
 
 - **API Publik** (tanpa login): `/api/v1/barokahiin/public/*`
+- **API Wilayah Administratif** (tanpa login): `/api/v1/public/wilayah/*`
 - **API Pembeli** (akun wajib untuk membuat pesanan): `/api/v1/barokahiin/buyer/*`
 
 Postman Collection siap impor: [barokahiin-v0.5.postman_collection.json](./postman/barokahiin-v0.5.postman_collection.json) (gunakan folder **1. Public** dan **2. Buyer**).
@@ -62,6 +63,8 @@ export const idempotentHeader = (token, key = crypto.randomUUID()) => ({
 | **Master Wilayah & Kategori**   | `GET /barokahiin/public/regions?source=wilayah_id&level=provinsi`, `/public/wilayah/filters`, `/categories`                      | Wilayah gabungan: administratif `wilayah.id` (Provinsi → Kab/Kota → Kecamatan → Kelurahan) + organisasi (`daerah` → `desa` → `kelompok`).                                                                                                                                                                                                              |
 | **Filter Wilayah Gabungan**     | `GET /public/wilayah/provinces`, `/regencies/{provinceCode}`, `/districts/{regencyCode}`, `/villages/{districtCode}`, `/filters` | Cascading dropdown wilayah administratif (`wilayah.id`, di-cache 7 hari) sekaligus daftar `daerah`, `desa`, `kelompok` dalam satu endpoint `/public/wilayah/filters`.                                                                                                                                                                                  |
 | **Halaman Statis & Pengaturan** | `GET /barokahiin/public/pages/{key}`, `/settings`                                                                                | Konten halaman (`tentang`, `cara-kerja`, `faq`, `kebijakan`, `kontak`) dan rekening/WhatsApp resmi.                                                                                                                                                                                                                                                    |
+
+Respons endpoint wilayah administratif (`provinces`, `regencies`, `districts`, `villages`) menggunakan daftar `{ code, name }` di dalam `data`, dengan metadata `meta.administrative_area_level` dan `meta.updated_at`. Katalog menggunakan kode resmi untuk `province_code`, `regency_code`, `district_code`, dan `village_code`; picker untuk profil/alamat tetap menggunakan `region_id` internal. Daftar administratif di-cache frontend selama 7 hari. Bentuk respons `/wilayah/filters` untuk `daerah`, `desa`, dan `kelompok` tetap mengikuti kontrak endpoint tersebut.
 
 **Query filter katalog (`GET /barokahiin/public/items`):**
 `q`, `category` (slug/kode/uuid), `region` (ID wilayah internal), `province_code` (contoh `32`), `regency_code` (contoh `32.73`), `district_code` (contoh `32.73.28`), `village_code` (contoh `32.73.28.1001`), `daerah_id`, `desa_id`, `kelompok_id`, `price_min`, `price_max`, `grade` (`A`/`B`/`C`), `serah` (`ambil`/`kirim`), `charity` (`true`/`false`), `sort` (`peringkat` [default deterministik] | `terbaru` | `termurah` | `termahal`), `limit` (1–100).

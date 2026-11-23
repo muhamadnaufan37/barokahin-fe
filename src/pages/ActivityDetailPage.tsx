@@ -9,6 +9,7 @@ import { Tag } from "primereact/tag";
 import { publicApi, resolveMediaUrl } from "../services/publicApi";
 import { PublicActivityDetail, PublicActivityExpense } from "../types";
 import { formatDateId, formatRupiah } from "../utils/format";
+import { setPageMetadata } from "../utils/seo";
 
 export const ActivityDetailPage: React.FC = () => {
   const { slug } = useParams<{ slug: string }>();
@@ -27,7 +28,12 @@ export const ActivityDetailPage: React.FC = () => {
         const data = await publicApi.getActivityBySlug(slug);
         if (!active) return;
         setActivity(data);
-        document.title = `${data.judul} — Transparansi Dana Barokahiin`;
+        setPageMetadata({
+          title: `${data.judul} — Transparansi Dana Barokahiin`,
+          description: data.deskripsi,
+          path: `/kegiatan/${encodeURIComponent(data.slug)}`,
+          image: data.media.find((media) => media.tipe === "foto")?.url,
+        });
       } catch (err) {
         if (active) {
           setError(
@@ -83,7 +89,7 @@ export const ActivityDetailPage: React.FC = () => {
       : 0;
   const sisaDana = Math.max(
     0,
-    activity.dana_terkumpul_rupiah - activity.total_penggunaan_rupiah
+    activity.dana_terkumpul_rupiah - (activity.total_penggunaan_rupiah ?? 0)
   );
 
   return (
@@ -125,6 +131,20 @@ export const ActivityDetailPage: React.FC = () => {
         <p className="mt-3 whitespace-pre-line text-sm leading-relaxed text-slate-700">
           {activity.deskripsi}
         </p>
+        {(activity.wilayah || activity.penerima_manfaat_desc) && (
+          <div className="mt-3 flex flex-wrap gap-2 text-xs">
+            {activity.wilayah && (
+              <span className="readiness-badge">
+                Wilayah: {activity.wilayah}
+              </span>
+            )}
+            {activity.penerima_manfaat_desc && (
+              <span className="readiness-badge">
+                Penerima manfaat: {activity.penerima_manfaat_desc}
+              </span>
+            )}
+          </div>
+        )}
 
         <div className="mt-6 grid gap-3 sm:grid-cols-4">
           <div className="rounded-2xl bg-brand-50 p-4">
@@ -144,13 +164,17 @@ export const ActivityDetailPage: React.FC = () => {
               Dana Digunakan
             </p>
             <p className="mt-1 text-lg font-bold text-slate-900">
-              {formatRupiah(activity.total_penggunaan_rupiah)}
+              {activity.total_penggunaan_rupiah === null
+                ? "Belum dilaporkan"
+                : formatRupiah(activity.total_penggunaan_rupiah)}
             </p>
           </div>
           <div className="rounded-2xl bg-slate-50 p-4">
             <p className="text-xs font-medium text-slate-500">Saldo Tersisa</p>
             <p className="mt-1 text-lg font-bold text-slate-900">
-              {formatRupiah(sisaDana)}
+              {activity.total_penggunaan_rupiah === null
+                ? "Belum dilaporkan"
+                : formatRupiah(sisaDana)}
             </p>
           </div>
         </div>

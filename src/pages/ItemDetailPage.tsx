@@ -1,54 +1,56 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { Button } from "primereact/button";
-import { InputText } from "primereact/inputtext";
-import { InputTextarea } from "primereact/inputtextarea";
 import { Message } from "primereact/message";
 import { Skeleton } from "primereact/skeleton";
 import { StatusBadge } from "../components/StatusBadge";
+import { RegionPicker } from "../components/RegionPicker";
+import { ItemCard } from "../components/ItemCard";
 import { TrustPaymentBanner } from "../components/TrustPaymentBanner";
-import { useStorefront } from "../context/StorefrontContext";
+import { useBuyer } from "../context/BuyerContext";
 import {
-  ApiClientError,
   publicApi,
   resolveMediaUrl,
 } from "../services/publicApi";
 import {
+  PublicItem,
   PublicItemDetail,
   PublicItemMedia,
-  PurchaseRequestResult,
+  ShippingEstimate,
 } from "../types";
 import {
   CONDITION_GRADE_META,
-  buildWhatsAppLink,
   formatDateId,
   formatRupiah,
 } from "../utils/format";
-
-type PurchaseFieldErrors = Partial<
-  Record<"nama_pembeli" | "kontak_pembeli" | "jumlah" | "catatan", string>
->;
+import { setPageMetadata } from "../utils/seo";
 
 export const ItemDetailPage: React.FC = () => {
   const { slug } = useParams<{ slug: string }>();
-  const { settings } = useStorefront();
+  const navigate = useNavigate();
+  const {
+    cart,
+    addToCart,
+    favorites,
+    toggleFavorite,
+    selectedRegion,
+    setSelectedRegion,
+  } = useBuyer();
 
   const [item, setItem] = useState<PublicItemDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeMediaIndex, setActiveMediaIndex] = useState(0);
   const [copiedLink, setCopiedLink] = useState(false);
-
-  // Purchase request form state
-  const [namaPembeli, setNamaPembeli] = useState("");
-  const [kontakPembeli, setKontakPembeli] = useState("");
-  const [jumlah, setJumlah] = useState<number>(1);
-  const [catatan, setCatatan] = useState("");
-  const [submitting, setSubmitting] = useState(false);
-  const [formError, setFormError] = useState<string | null>(null);
-  const [fieldErrors, setFieldErrors] = useState<PurchaseFieldErrors>({});
-  const [purchaseResult, setPurchaseResult] =
-    useState<PurchaseRequestResult | null>(null);
+  const [cartError, setCartError] = useState<string | null>(null);
+  const [cartNotice, setCartNotice] = useState<string | null>(null);
+  const [shipping, setShipping] = useState<ShippingEstimate | null>(null);
+  const [shippingLoading, setShippingLoading] = useState(false);
+  const [shippingError, setShippingError] = useState<string | null>(null);
+  const [similarItems, setSimilarItems] = useState<PublicItem[]>([]);
+  const [similarError, setSimilarError] = useState<string | null>(null);
+  const inCart = !!item && cart.some((entry) => entry.uuid === item.uuid);
+  const isFavorite = !!item && favorites.includes(item.uuid);
 
   useEffect(() => {
     if (!slug) return;
@@ -58,14 +60,36 @@ export const ItemDetailPage: React.FC = () => {
       setLoading(true);
       setError(null);
       setActiveMediaIndex(0);
-      setPurchaseResult(null);
-      setFieldErrors({});
-      setFormError(null);
       try {
         const data = await publicApi.getItemBySlug(slug);
         if (!active) return;
         setItem(data);
-        document.title = `${data.judul} — Barokahiin`;
+        setPageMetadata({
+          title: `${data.judul} — Barokahiin`,
+          description: data.keterangan || data.judul,
+          path: `/barang/${encodeURIComponent(data.slug)}`,
+          image: data.cover_url,
+          type: "product",
+          structuredData: {
+            "@context": "https://schema.org",
+            "@type": "Product",
+            name: data.judul,
+            description: data.keterangan || data.judul,
+            image: data.cover_url ? [data.cover_url] : undefined,
+            sku: data.kode_barang,
+            itemCondition: "https://schema.org/UsedCondition",
+            offers: {
+              "@type": "Offer",
+              priceCurrency: "IDR",
+              price: data.harga_rupiah,
+              availability:
+                data.status === "terbit"
+                  ? "https://schema.org/InStock"
+                  : "https://schema.org/OutOfStock",
+              url: window.location.href,
+            },
+          },
+        });
       } catch (err) {
         if (!active) return;
         setError(
@@ -83,6 +107,71 @@ export const ItemDetailPage: React.FC = () => {
       active = false;
     };
   }, [slug]);
+
+  useEffect(() => {
+    if (!item || !selectedRegion || item.pickup_only) {
+      setShipping(null);
+      setShippingError(null);
+      return;
+    }
+    let active = true;
+    setShippingLoading(true);
+    setShippingError(null);
+    publicApi
+      .getShippingEstimate(item.slug, selectedRegion.id)
+      .then((estimate) => {
+        if (active) setShipping(estimate);
+      })
+      .catch((cause) => {
+        if (active) {
+          setShippingError(
+            cause instanceof Error
+              ? cause.message
+              : "Estimasi ongkir belum tersedia."
+          );
+        }
+      })
+      .finally(() => {
+        if (active) setShippingLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [item, selectedRegion]);
+
+  useEffect(() => {
+    if (!item?.kategori) {
+      setSimilarItems([]);
+      return;
+    }
+    let active = true;
+    setSimilarError(null);
+    publicApi
+      .getItems({
+        kategori: item.kategori.slug,
+        region: selectedRegion?.id,
+        per_page: 4,
+      })
+      .then((response) => {
+        if (active) {
+          setSimilarItems(
+            response.items.filter((candidate) => candidate.uuid !== item.uuid)
+          );
+        }
+      })
+      .catch((cause) => {
+        if (active) {
+          setSimilarError(
+            cause instanceof Error
+              ? cause.message
+              : "Barang serupa belum bisa dimuat."
+          );
+        }
+      });
+    return () => {
+      active = false;
+    };
+  }, [item, selectedRegion]);
 
   const mediaList: PublicItemMedia[] = useMemo(() => {
     if (!item) return [];
@@ -131,74 +220,6 @@ export const ItemDetailPage: React.FC = () => {
     }
   };
 
-  const validateForm = (): boolean => {
-    const nextErrors: PurchaseFieldErrors = {};
-    if (!namaPembeli.trim()) {
-      nextErrors.nama_pembeli = "Nama lengkap wajib diisi.";
-    } else if (namaPembeli.trim().length < 2) {
-      nextErrors.nama_pembeli = "Nama minimal 2 karakter.";
-    }
-
-    const cleanedPhone = kontakPembeli.replace(/[\s-]/g, "");
-    if (!cleanedPhone) {
-      nextErrors.kontak_pembeli = "Nomor WhatsApp / HP wajib diisi.";
-    } else if (!/^(\+?62|0)8\d{7,12}$/.test(cleanedPhone)) {
-      nextErrors.kontak_pembeli =
-        "Masukkan nomor HP/WhatsApp Indonesia yang valid (contoh: 081234567890).";
-    }
-
-    if (item && (jumlah < 1 || jumlah > Math.min(50, item.stok_tersedia))) {
-      nextErrors.jumlah = `Jumlah harus antara 1 sampai ${Math.min(
-        50,
-        item.stok_tersedia
-      )}.`;
-    }
-
-    setFieldErrors(nextErrors);
-    return Object.keys(nextErrors).length === 0;
-  };
-
-  const handlePurchaseSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!item) return;
-    setFormError(null);
-
-    if (!validateForm()) {
-      setFormError("Periksa kembali isian yang masih belum sesuai.");
-      return;
-    }
-
-    setSubmitting(true);
-    try {
-      const result = await publicApi.createPurchaseRequest({
-        item_slug: item.slug,
-        nama_pembeli: namaPembeli.trim(),
-        kontak_pembeli: kontakPembeli.trim(),
-        jumlah,
-        catatan: catatan.trim() || undefined,
-      });
-      setPurchaseResult(result);
-    } catch (err) {
-      if (err instanceof ApiClientError) {
-        if (err.fields) {
-          const mapped: PurchaseFieldErrors = {};
-          Object.entries(err.fields).forEach(([k, v]) => {
-            const msg = Array.isArray(v) ? v[0] : v;
-            if (k in mapped || ["nama_pembeli", "kontak_pembeli", "jumlah", "catatan"].includes(k)) {
-              mapped[k as keyof PurchaseFieldErrors] = msg;
-            }
-          });
-          setFieldErrors(mapped);
-        }
-        setFormError(err.message);
-      } else {
-        setFormError("Gagal mengirim permintaan beli. Silakan coba lagi.");
-      }
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
   if (loading) {
     return (
       <div className="space-y-6">
@@ -241,24 +262,23 @@ export const ItemDetailPage: React.FC = () => {
 
   const gradeMeta = CONDITION_GRADE_META[item.kondisi_grade];
   const canOrder = item.status === "terbit" && item.stok_tersedia > 0;
-  const maxOrderQty = Math.min(50, Math.max(1, item.stok_tersedia));
-  const waConfirmLink = buildWhatsAppLink(
-    settings?.whatsapp_resmi,
-    `Assalamu'alaikum / Halo Admin Barokahiin, saya ${
-      namaPembeli || "(Nama)"
-    } sudah mengirim permintaan beli untuk barang ${item.kode_barang} - ${
-      item.judul
-    } (${jumlah} pcs, total ${formatRupiah(
-      item.harga_rupiah * jumlah
-    )}). Mohon konfirmasi ketersediaan & instruksi pembayaran.`
-  );
-  const waAskLink = buildWhatsAppLink(
-    settings?.whatsapp_resmi,
-    `Halo Admin Barokahiin, saya ingin bertanya tentang barang ${item.kode_barang} (${item.judul}).`
-  );
+  const addItemToCart = async () => {
+    setCartError(null);
+    setCartNotice(null);
+    try {
+      await addToCart(item);
+      setCartNotice("Barang ditambahkan ke keranjang.");
+    } catch (cause) {
+      setCartError(
+        cause instanceof Error
+          ? cause.message
+          : "Barang belum bisa ditambahkan ke keranjang."
+      );
+    }
+  };
 
   return (
-    <div className="space-y-8">
+    <div className="detail-page space-y-8">
       {/* Breadcrumb */}
       <nav
         aria-label="Breadcrumb"
@@ -289,7 +309,7 @@ export const ItemDetailPage: React.FC = () => {
       <div className="grid gap-8 lg:grid-cols-12">
         {/* Left: Media Gallery */}
         <div className="space-y-3 lg:col-span-7">
-          <div className="relative aspect-[4/3] w-full overflow-hidden rounded-2xl border border-slate-200 bg-slate-100">
+          <div className="relative aspect-[4/5] w-full overflow-hidden rounded-xl border border-slate-200 bg-slate-100">
             {activeMedia ? (
               activeMedia.tipe === "video" ? (
                 <video
@@ -336,7 +356,7 @@ export const ItemDetailPage: React.FC = () => {
                     : resolveMediaUrl(m.url);
                 const isActive = idx === activeMediaIndex;
                 return (
-                  <button
+                  <Button
                     key={m.uuid}
                     type="button"
                     onClick={() => setActiveMediaIndex(idx)}
@@ -368,7 +388,7 @@ export const ItemDetailPage: React.FC = () => {
                         <i className="pi pi-play-circle text-lg" aria-hidden="true" />
                       </span>
                     )}
-                  </button>
+                  </Button>
                 );
               })}
             </div>
@@ -377,7 +397,7 @@ export const ItemDetailPage: React.FC = () => {
           {/* Description & Honest Defects */}
           <div className="space-y-4 rounded-2xl border border-slate-200 bg-white p-5">
             <div>
-              <h2 className="text-sm font-bold uppercase tracking-wider text-slate-500">
+              <h2 className="text-sm font-bold text-slate-700">
                 Keterangan Barang
               </h2>
               <p className="mt-2 whitespace-pre-line text-sm leading-relaxed text-slate-700">
@@ -387,7 +407,7 @@ export const ItemDetailPage: React.FC = () => {
 
             {item.spesifikasi && (
               <div className="border-t border-slate-100 pt-4">
-                <h2 className="text-sm font-bold uppercase tracking-wider text-slate-500">
+                <h2 className="text-sm font-bold text-slate-700">
                   Ukuran / Spesifikasi
                 </h2>
                 <p className="mt-1.5 whitespace-pre-line text-sm text-slate-700">
@@ -401,7 +421,7 @@ export const ItemDetailPage: React.FC = () => {
               className="w-full justify-start"
               content={
                 <div className="text-left">
-                  <span className="block text-xs font-bold uppercase tracking-wider">
+                  <span className="block text-xs font-bold">
                     Catatan Kekurangan (Kurasi Jujur)
                   </span>
                   <span className="mt-0.5 block text-sm">
@@ -427,15 +447,26 @@ export const ItemDetailPage: React.FC = () => {
                 </h1>
               </div>
 
-              <Button
-                type="button"
-                icon={copiedLink ? "pi pi-check" : "pi pi-share-alt"}
-                outlined
-                severity={copiedLink ? "success" : "secondary"}
-                aria-label="Bagikan tautan barang"
-                onClick={handleShare}
-                className="shrink-0"
-              />
+              <div className="flex shrink-0 gap-2">
+                <Button
+                  type="button"
+                  icon={isFavorite ? "pi pi-heart-fill" : "pi pi-heart"}
+                  outlined
+                  severity={isFavorite ? "danger" : "secondary"}
+                  aria-label={isFavorite ? "Hapus dari favorit" : "Simpan ke favorit"}
+                  aria-pressed={isFavorite}
+                  onClick={() => toggleFavorite(item.uuid)}
+                />
+                <Button
+                  type="button"
+                  icon={copiedLink ? "pi pi-check" : "pi pi-share-alt"}
+                  outlined
+                  severity={copiedLink ? "success" : "secondary"}
+                  aria-label="Bagikan tautan barang"
+                  onClick={handleShare}
+                  className="shrink-0"
+                />
+              </div>
             </div>
 
             {copiedLink && (
@@ -450,12 +481,25 @@ export const ItemDetailPage: React.FC = () => {
                 <p className="text-2xl font-bold text-brand-700">
                   {formatRupiah(item.harga_rupiah)}
                 </p>
+                {item.harga_baru_rupiah && (
+                  <p className="text-xs text-slate-500">
+                    Harga baru referensi {formatRupiah(item.harga_baru_rupiah)}
+                  </p>
+                )}
               </div>
               <div className="text-right">
-                <p className="text-xs text-slate-500">Stok Tersedia</p>
-                <p className="text-base font-semibold text-slate-800">
-                  {item.stok_tersedia}
-                </p>
+                <span
+                  className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold ${
+                    item.status === "terbit"
+                      ? "bg-emerald-50 text-emerald-900"
+                      : item.status === "dipesan"
+                        ? "bg-amber-100 text-amber-900"
+                        : "bg-slate-100 text-slate-700"
+                  }`}
+                >
+                  <i className="pi pi-check-circle" aria-hidden="true" />
+                  {item.status_label}
+                </span>
               </div>
             </div>
 
@@ -486,6 +530,127 @@ export const ItemDetailPage: React.FC = () => {
               </div>
             </dl>
 
+            {item.segel_kurasi && (
+              <details className="rounded-xl border border-slate-200 bg-slate-50 p-3.5">
+                <summary className="cursor-pointer list-none text-sm font-semibold text-slate-900">
+                  <span className="inline-flex items-center gap-2">
+                    <i className="pi pi-verified text-brand-700" aria-hidden="true" />
+                    Segel kurasi, SOP {item.segel_kurasi.sop_version}
+                    <i className="pi pi-angle-down text-xs text-slate-500" aria-hidden="true" />
+                  </span>
+                </summary>
+                <ul className="mt-3 space-y-2 border-t border-slate-200 pt-3">
+                  {item.segel_kurasi.checks.length ? (
+                    item.segel_kurasi.checks.map((check) => (
+                      <li
+                        key={check.kode}
+                        className="flex items-start gap-2 text-xs leading-relaxed text-slate-700"
+                      >
+                        <i
+                          className={`pi ${
+                            check.lulus
+                              ? "pi-check-circle text-emerald-700"
+                              : "pi-info-circle text-amber-700"
+                          } mt-0.5`}
+                          aria-hidden="true"
+                        />
+                        <span>
+                          <strong>{check.teks}</strong>
+                          {check.teks_keterbukaan && (
+                            <span className="block text-slate-600">
+                              {check.teks_keterbukaan}
+                            </span>
+                          )}
+                        </span>
+                      </li>
+                    ))
+                  ) : (
+                    <li className="text-xs text-slate-600">
+                      Rincian butir pemeriksaan belum tersedia.
+                    </li>
+                  )}
+                </ul>
+              </details>
+            )}
+
+            {item.toko && (
+              <Link
+                to={`/toko/${item.toko.slug}`}
+                className="flex items-start gap-3 rounded-xl border border-slate-200 p-3.5 text-inherit no-underline hover:border-indigo-400"
+              >
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-indigo-50 text-brand-700">
+                  <i className="pi pi-shop" aria-hidden="true" />
+                </span>
+                <div className="min-w-0">
+                  <p className="text-xs text-slate-500">Dikurasi oleh</p>
+                  <p className="mt-0.5 font-semibold text-slate-900">
+                    {item.toko.nama}
+                  </p>
+                  <p className="mt-0.5 text-xs text-slate-600">
+                    {item.toko.area_publik}
+                    {item.toko.level
+                      ? `, Koordinator level ${item.toko.level}`
+                      : ""}
+                  </p>
+                  {item.toko.rating_count !== undefined && (
+                    <p className="mt-1 text-xs text-slate-500">
+                      {item.toko.rating_count > 0 && item.toko.rating_avg !== null
+                        ? `${item.toko.rating_avg.toFixed(1)} dari ${item.toko.rating_count} ulasan`
+                        : "Toko baru"}
+                    </p>
+                  )}
+                </div>
+              </Link>
+            )}
+
+            <div className="space-y-3 rounded-xl border border-slate-200 p-3.5">
+              <h2 className="text-sm font-bold text-slate-800">
+                Ambil atau kirim
+              </h2>
+              <RegionPicker
+                label="Pilih wilayah tujuan"
+                value={selectedRegion?.id || ""}
+                path={selectedRegion?.path}
+                onChange={(region, path) =>
+                  setSelectedRegion(
+                    region ? { id: region.id, nama: region.nama, path } : null
+                  )
+                }
+              />
+              {item.pickup_only ? (
+                <p className="text-sm text-slate-700">
+                  Barang ini hanya dapat diambil di toko koordinator.
+                </p>
+              ) : shippingLoading ? (
+                <p className="text-sm text-slate-600" role="status">
+                  Menghitung estimasi dari data wilayah…
+                </p>
+              ) : shippingError ? (
+                <p className="text-sm text-red-700" role="alert">
+                  {shippingError}
+                </p>
+              ) : shipping ? (
+                <dl className="grid gap-1 text-sm text-slate-700">
+                  <div className="flex justify-between gap-3">
+                    <dt>Zona pengiriman</dt>
+                    <dd>{shipping.zona}</dd>
+                  </div>
+                  <div className="flex justify-between gap-3">
+                    <dt>Estimasi ongkir</dt>
+                    <dd>{formatRupiah(shipping.ongkir_idr)}</dd>
+                  </div>
+                  <div className="flex justify-between gap-3">
+                    <dt>Biaya kemas</dt>
+                    <dd>{formatRupiah(shipping.packing_fee_idr)}</dd>
+                  </div>
+                </dl>
+              ) : (
+                <p className="text-sm text-slate-600">
+                  Pilih wilayah untuk melihat estimasi ongkir yang tersedia.
+                </p>
+              )}
+            </div>
+
             {item.kegiatan && (
               <Link
                 to={`/kegiatan/${item.kegiatan.slug}`}
@@ -504,197 +669,31 @@ export const ItemDetailPage: React.FC = () => {
             )}
           </div>
 
-          {/* Purchase Request Section */}
-          {purchaseResult ? (
-            <div className="space-y-4 rounded-2xl border border-emerald-200 bg-emerald-50 p-5 shadow-sm">
-              <div className="flex items-start gap-3">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-600 text-white">
-                  <i className="pi pi-check text-lg" aria-hidden="true" />
-                </div>
-                <div>
-                  <h2 className="text-base font-bold text-emerald-950">
-                    Permintaan Beli Diterima
-                  </h2>
-                  <p className="mt-1 text-xs leading-relaxed text-emerald-900">
-                    Terima kasih, <strong>{namaPembeli}</strong>. Permintaan
-                    Anda berstatus{" "}
-                    <span className="font-semibold uppercase">
-                      {purchaseResult.status}
-                    </span>{" "}
-                    (jumlah: {purchaseResult.jumlah}). Admin akan segera
-                    menghubungi Anda untuk konfirmasi.
-                  </p>
-                </div>
-              </div>
-
-              {waConfirmLink && (
-                <a
-                  href={waConfirmLink}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700"
-                >
-                  <i className="pi pi-whatsapp" aria-hidden="true" />
-                  <span>Konfirmasi via WhatsApp Resmi</span>
-                </a>
-              )}
-
-              <TrustPaymentBanner settings={settings} />
-            </div>
-          ) : canOrder ? (
-            <form
-              onSubmit={handlePurchaseSubmit}
-              noValidate
-              className="space-y-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
-            >
-              <div>
-                <h2 className="text-base font-bold text-slate-900">
-                  Kirim Permintaan Beli
-                </h2>
-                <p className="mt-0.5 text-xs text-slate-500">
-                  Tidak perlu akun. Admin akan mengonfirmasi ketersediaan dan
-                  batas waktu transfer.
-                </p>
-              </div>
-
-              {formError && (
-                <Message
-                  severity="error"
-                  text={formError}
-                  className="w-full justify-start"
-                />
-              )}
-
-              <div className="space-y-1">
-                <label
-                  htmlFor="nama-pembeli"
-                  className="block text-xs font-semibold text-slate-700"
-                >
-                  Nama Lengkap *
-                </label>
-                <InputText
-                  id="nama-pembeli"
-                  value={namaPembeli}
-                  onChange={(e) => {
-                    setNamaPembeli(e.target.value);
-                    if (fieldErrors.nama_pembeli) {
-                      setFieldErrors((prev) => ({
-                        ...prev,
-                        nama_pembeli: undefined,
-                      }));
-                    }
-                  }}
-                  placeholder="Contoh: Ahmad Fauzi"
-                  invalid={!!fieldErrors.nama_pembeli}
-                  className="w-full"
-                />
-                {fieldErrors.nama_pembeli && (
-                  <small className="p-error block">
-                    {fieldErrors.nama_pembeli}
-                  </small>
-                )}
-              </div>
-
-              <div className="space-y-1">
-                <label
-                  htmlFor="kontak-pembeli"
-                  className="block text-xs font-semibold text-slate-700"
-                >
-                  Nomor WhatsApp / HP *
-                </label>
-                <InputText
-                  id="kontak-pembeli"
-                  type="tel"
-                  value={kontakPembeli}
-                  onChange={(e) => {
-                    setKontakPembeli(e.target.value);
-                    if (fieldErrors.kontak_pembeli) {
-                      setFieldErrors((prev) => ({
-                        ...prev,
-                        kontak_pembeli: undefined,
-                      }));
-                    }
-                  }}
-                  placeholder="Contoh: 081234567890"
-                  invalid={!!fieldErrors.kontak_pembeli}
-                  className="w-full"
-                />
-                {fieldErrors.kontak_pembeli && (
-                  <small className="p-error block">
-                    {fieldErrors.kontak_pembeli}
-                  </small>
-                )}
-              </div>
-
-              {item.stok_tersedia > 1 && (
-                <div className="space-y-1">
-                  <label
-                    htmlFor="jumlah-beli"
-                    className="block text-xs font-semibold text-slate-700"
-                  >
-                    Jumlah (maks. {maxOrderQty})
-                  </label>
-                  <InputText
-                    id="jumlah-beli"
-                    type="number"
-                    min={1}
-                    max={maxOrderQty}
-                    value={String(jumlah)}
-                    onChange={(e) => {
-                      const val = parseInt(e.target.value, 10);
-                      setJumlah(
-                        Number.isNaN(val)
-                          ? 1
-                          : Math.max(1, Math.min(maxOrderQty, val))
-                      );
-                    }}
-                    invalid={!!fieldErrors.jumlah}
-                    className="w-full"
-                  />
-                  {fieldErrors.jumlah && (
-                    <small className="p-error block">{fieldErrors.jumlah}</small>
-                  )}
-                </div>
-              )}
-
-              <div className="space-y-1">
-                <label
-                  htmlFor="catatan-pembeli"
-                  className="block text-xs font-semibold text-slate-700"
-                >
-                  Catatan (opsional)
-                </label>
-                <InputTextarea
-                  id="catatan-pembeli"
-                  rows={2}
-                  autoResize
-                  value={catatan}
-                  onChange={(e) => setCatatan(e.target.value)}
-                  placeholder="Contoh: Rencana ambil di tempat hari Sabtu"
-                  className="w-full"
-                />
-              </div>
-
+          {canOrder ? (
+            <div className="space-y-3 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+              <p className="text-sm text-slate-600">
+                Barang unik, jumlah satu. Stok diperiksa kembali saat checkout.
+              </p>
+              {cartError && <p className="form-alert error" role="alert">{cartError}</p>}
+              {cartNotice && <p className="form-alert success" role="status">{cartNotice}</p>}
               <Button
-                type="submit"
-                label={submitting ? "Mengirim Permintaan..." : "Ajukan Permintaan Beli"}
-                icon="pi pi-send"
-                loading={submitting}
-                className="w-full justify-center"
-              />
-
-              {waAskLink && (
-                <a
-                  href={waAskLink}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl border border-emerald-600 bg-white px-4 py-2.5 text-sm font-semibold text-emerald-700 hover:bg-emerald-50"
+                className="primary-action w-full"
+                type="button"
+                disabled={inCart}
+                onClick={() => void addItemToCart()}
+              >
+                {inCart ? "Sudah di keranjang" : "Tambah ke keranjang"}
+              </Button>
+              {inCart && (
+                <Button
+                  className="secondary-action w-full"
+                  type="button"
+                  onClick={() => navigate("/keranjang")}
                 >
-                  <i className="pi pi-whatsapp" aria-hidden="true" />
-                  <span>Tanya Admin via WhatsApp</span>
-                </a>
+                  Lihat keranjang
+                </Button>
               )}
-            </form>
+            </div>
           ) : (
             <div className="space-y-3 rounded-2xl border border-slate-200 bg-white p-5">
               <h2 className="text-base font-bold text-slate-900">
@@ -716,9 +715,38 @@ export const ItemDetailPage: React.FC = () => {
             </div>
           )}
 
-          <TrustPaymentBanner settings={settings} compact />
+          <TrustPaymentBanner />
         </div>
       </div>
+
+      {similarError && (
+        <p className="form-alert error" role="alert">{similarError}</p>
+      )}
+      {similarItems.length > 0 && (
+        <section className="space-y-4">
+          <h2 className="text-xl font-bold text-slate-900">Barang serupa</h2>
+          <div className="home-item-grid">
+            {similarItems.map((similar) => (
+              <ItemCard key={similar.uuid} item={similar} />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {canOrder && (
+        <div className="detail-sticky-buy">
+          <span className="detail-sticky-price">
+            {formatRupiah(item.harga_rupiah)}
+          </span>
+          <Button
+            type="button"
+            disabled={inCart}
+            onClick={() => void addItemToCart()}
+          >
+            {inCart ? "Sudah di keranjang" : "Tambah ke keranjang"}
+          </Button>
+        </div>
+      )}
     </div>
   );
 };

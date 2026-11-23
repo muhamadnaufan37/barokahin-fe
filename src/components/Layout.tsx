@@ -1,7 +1,13 @@
-import React, { useState } from "react";
-import { Link, NavLink } from "react-router-dom";
+import React, { useEffect, useState } from "react";
+import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
+import Lenis from "lenis";
 import { Button } from "primereact/button";
+import { InputText } from "primereact/inputtext";
 import { Sidebar } from "primereact/sidebar";
+import { motion } from "motion/react";
+import { CategoryPopover } from "./CategoryPopover";
+import { CommandPalette } from "./CommandPalette";
+import { useBuyer } from "../context/BuyerContext";
 import { useStorefront } from "../context/StorefrontContext";
 import { buildWhatsAppLink } from "../utils/format";
 
@@ -14,8 +20,12 @@ const NAV_LINKS = [
 ];
 
 export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { settings } = useStorefront();
+  const { categories, settings } = useStorefront();
+  const { cart, token } = useBuyer();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [commandOpen, setCommandOpen] = useState(false);
+  const location = useLocation();
+  const navigate = useNavigate();
 
   const appName = import.meta.env.VITE_APP_NAME || "Barokahiin";
   const waLink = buildWhatsAppLink(
@@ -23,86 +33,199 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
     "Assalamu'alaikum / Halo Admin Barokahiin, saya ingin bertanya tentang barang atau donasi."
   );
 
+  useEffect(() => {
+    const mediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+    if (mediaQuery.matches) return;
+
+    const lenis = new Lenis({ duration: 0.85, smoothWheel: true });
+    let frame = 0;
+    const animate = (time: number) => {
+      lenis.raf(time);
+      frame = window.requestAnimationFrame(animate);
+    };
+
+    frame = window.requestAnimationFrame(animate);
+    const stopForReducedMotion = (event: MediaQueryListEvent) => {
+      if (event.matches) {
+        window.cancelAnimationFrame(frame);
+        lenis.destroy();
+      }
+    };
+    mediaQuery.addEventListener("change", stopForReducedMotion);
+
+    return () => {
+      window.cancelAnimationFrame(frame);
+      mediaQuery.removeEventListener("change", stopForReducedMotion);
+      lenis.destroy();
+    };
+  }, []);
+
+  useEffect(() => {
+    const handleShortcut = (event: KeyboardEvent) => {
+      if (
+        (event.metaKey || event.ctrlKey) &&
+        event.key.toLowerCase() === "k"
+      ) {
+        event.preventDefault();
+        setCommandOpen((isOpen) => !isOpen);
+      }
+      if (event.key === "Escape") setCommandOpen(false);
+    };
+    window.addEventListener("keydown", handleShortcut);
+    return () => window.removeEventListener("keydown", handleShortcut);
+  }, []);
+
+  useEffect(() => {
+    setMobileMenuOpen(false);
+    setCommandOpen(false);
+  }, [location.pathname]);
+
+  const openCatalogSearch = (query = "") => {
+    setCommandOpen(false);
+    const search = query.trim();
+    navigate(search ? `/katalog?q=${encodeURIComponent(search)}` : "/katalog");
+  };
+
   return (
-    <div className="flex min-h-screen flex-col bg-slate-50 text-slate-800">
-      {/* Top Navbar */}
-      <header className="sticky top-0 z-40 border-b border-slate-200/80 bg-white/95 backdrop-blur-md">
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
+    <div className="app-shell flex min-h-screen flex-col">
+      <header className="site-header">
+        <div className="site-nav">
           <Link
             to="/"
-            className="flex min-h-[44px] items-center gap-2.5 rounded-xl pr-2 focus:outline-none focus:ring-2 focus:ring-brand-500"
+            className="brand-lockup"
+            aria-label={`${appName}, beranda`}
           >
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-600 text-white shadow-sm">
-              <i className="pi pi-heart-fill text-lg" aria-hidden="true" />
+            <div className="brand-mark">
+              <i className="pi pi-heart-fill" aria-hidden="true" />
             </div>
             <div>
-              <span className="block text-base font-bold leading-tight text-slate-900">
-                {appName}
-              </span>
-              <span className="block text-[11px] font-medium text-brand-700">
-                Barang Terkurasi · Dana Transparan
-              </span>
+              <span className="brand-name">{appName}</span>
+              <span className="brand-caption">Lapak barang baik</span>
             </div>
           </Link>
 
-          {/* Desktop Nav */}
-          <nav
-            aria-label="Navigasi utama"
-            className="hidden items-center gap-1 md:flex"
+          <form
+            className="nav-search"
+            role="search"
+            onSubmit={(event) => {
+              event.preventDefault();
+              const formData = new FormData(event.currentTarget);
+              openCatalogSearch(String(formData.get("q") || ""));
+            }}
           >
+            <i className="pi pi-search" aria-hidden="true" />
+            <label className="sr-only" htmlFor="quick-search">
+              Cari barang
+            </label>
+            <InputText
+              id="quick-search"
+              name="q"
+              placeholder="Cari barang..."
+            />
+            <Button type="button" className="shortcut-key" onClick={() => setCommandOpen(true)}>
+              Ctrl K
+            </Button>
+          </form>
+
+          <nav aria-label="Navigasi utama" className="desktop-nav">
             {NAV_LINKS.map((item) => (
               <NavLink
                 key={item.to}
                 to={item.to}
                 end={item.to === "/"}
                 className={({ isActive }) =>
-                  `inline-flex min-h-[44px] items-center gap-2 rounded-xl px-3.5 py-2 text-sm font-medium transition-colors ${
-                    isActive
-                      ? "bg-brand-50 text-brand-700"
-                      : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
-                  }`
+                  `nav-pill-link ${isActive ? "is-active" : ""}`
                 }
               >
-                <i className={`${item.icon} text-xs`} aria-hidden="true" />
                 <span>{item.label}</span>
               </NavLink>
             ))}
+            <CategoryPopover categories={categories} />
           </nav>
 
-          {/* Desktop CTA + Mobile Toggle */}
-          <div className="flex items-center gap-2">
+          <div className="nav-actions">
+            <Link
+              to="/keranjang"
+              className="nav-cart"
+              aria-label={`Keranjang, ${cart.length} barang`}
+            >
+              <i className="pi pi-shopping-cart" aria-hidden="true" />
+              <span>Keranjang</span>
+              {cart.length > 0 && <span className="nav-cart-count">{cart.length}</span>}
+            </Link>
+            <Link
+              to={token ? "/akun" : "/masuk"}
+              className="nav-account"
+              aria-label={token ? "Akun pembeli" : "Masuk ke akun pembeli"}
+            >
+              <i className="pi pi-user" aria-hidden="true" />
+              <span>{token ? "Akun" : "Masuk"}</span>
+            </Link>
+            <Button
+              type="button"
+              className="icon-action search-action"
+              aria-label="Buka pencarian cepat"
+              onClick={() => setCommandOpen(true)}
+            >
+              <i className="pi pi-search" aria-hidden="true" />
+            </Button>
             <Link
               to="/donasi-barang"
-              className="hidden min-h-[44px] items-center gap-2 rounded-xl bg-brand-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-700 sm:inline-flex md:hidden lg:inline-flex"
+              className="nav-donate"
             >
-              <i className="pi pi-plus-circle text-xs" aria-hidden="true" />
               <span>Titip Donasi</span>
             </Link>
 
-            <div className="md:hidden">
-              <Button
-                type="button"
-                icon="pi pi-bars"
-                outlined
-                severity="secondary"
-                aria-label="Buka menu navigasi"
-                onClick={() => setMobileMenuOpen(true)}
-                className="h-11 w-11"
-              />
-            </div>
+            <Button
+              type="button"
+              icon="pi pi-bars"
+              text
+              aria-label="Buka menu navigasi"
+              onClick={() => setMobileMenuOpen(true)}
+              className="mobile-menu-trigger"
+            />
           </div>
         </div>
       </header>
 
-      {/* Mobile PrimeReact Sidebar */}
       <Sidebar
         visible={mobileMenuOpen}
         position="right"
         onHide={() => setMobileMenuOpen(false)}
-        header={<span className="text-base font-bold text-slate-900">{appName}</span>}
-        className="w-72"
+        ariaCloseLabel="Tutup menu"
+        blockScroll
+        header={<span className="brand-name">{appName}</span>}
+        className="mobile-drawer"
       >
-        <nav aria-label="Menu seluler" className="flex flex-col gap-1.5 pt-2">
+        <p className="drawer-intro">
+          Temukan barang layak pakai dan ikuti jejak kebaikannya.
+        </p>
+        <nav aria-label="Menu seluler" className="mobile-drawer-links">
+          <NavLink
+            to="/keranjang"
+            onClick={() => setMobileMenuOpen(false)}
+            className="mobile-drawer-link"
+          >
+            <i className="pi pi-shopping-cart text-sm" aria-hidden="true" />
+            <span>Keranjang</span>
+            {cart.length > 0 && <kbd>{cart.length}</kbd>}
+          </NavLink>
+          <NavLink
+            to={token ? "/akun" : "/masuk"}
+            onClick={() => setMobileMenuOpen(false)}
+            className="mobile-drawer-link"
+          >
+            <i className="pi pi-user text-sm" aria-hidden="true" />
+            <span>{token ? "Akun pembeli" : "Masuk"}</span>
+          </NavLink>
+          <NavLink
+            to="/favorit"
+            onClick={() => setMobileMenuOpen(false)}
+            className="mobile-drawer-link"
+          >
+            <i className="pi pi-heart text-sm" aria-hidden="true" />
+            <span>Barang favorit</span>
+          </NavLink>
           {NAV_LINKS.map((item) => (
             <NavLink
               key={item.to}
@@ -110,57 +233,81 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
               end={item.to === "/"}
               onClick={() => setMobileMenuOpen(false)}
               className={({ isActive }) =>
-                `flex min-h-[44px] items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm font-medium ${
-                  isActive
-                    ? "bg-brand-50 text-brand-700"
-                    : "text-slate-700 hover:bg-slate-100"
-                }`
+                `mobile-drawer-link ${isActive ? "is-active" : ""}`
               }
             >
               <i className={`${item.icon} text-sm`} aria-hidden="true" />
               <span>{item.label}</span>
             </NavLink>
           ))}
+          <Button
+            type="button"
+            className="mobile-drawer-link"
+            onClick={() => {
+              setMobileMenuOpen(false);
+              setCommandOpen(true);
+            }}
+          >
+            <i className="pi pi-search" aria-hidden="true" />
+            <span>Pencarian cepat</span>
+            <kbd>Ctrl K</kbd>
+          </Button>
         </nav>
+        <Link
+          to="/donasi-barang"
+          onClick={() => setMobileMenuOpen(false)}
+          className="drawer-donate"
+        >
+          <i className="pi pi-gift" aria-hidden="true" />
+          <span>Ajukan donasi barang</span>
+        </Link>
       </Sidebar>
 
-      {/* Main Content */}
-      <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6 pb-24 sm:px-6 md:pb-10">
+      <main className="page-main">
         {children}
       </main>
 
-      {/* Mobile Bottom Nav */}
-      <nav
-        aria-label="Navigasi bawah seluler"
-        className="fixed bottom-0 left-0 right-0 z-30 border-t border-slate-200 bg-white/95 backdrop-blur-md md:hidden"
-      >
-        <div className="grid grid-cols-4">
+      <nav aria-label="Navigasi bawah seluler" className="mobile-tab-bar">
+        <div className="mobile-tab-inner">
           {[
             { to: "/", label: "Beranda", icon: "pi pi-home" },
             { to: "/katalog", label: "Katalog", icon: "pi pi-shopping-bag" },
-            { to: "/kegiatan", label: "Dana", icon: "pi pi-chart-bar" },
-            { to: "/donasi-barang", label: "Donasi", icon: "pi pi-gift" },
+            { to: "/keranjang", label: "Keranjang", icon: "pi pi-shopping-cart" },
+            { to: token ? "/akun" : "/masuk", label: "Akun", icon: "pi pi-user" },
           ].map((item) => (
             <NavLink
               key={item.to}
               to={item.to}
               end={item.to === "/"}
-              className={({ isActive }) =>
-                `flex min-h-[56px] flex-col items-center justify-center gap-0.5 text-[11px] font-medium ${
-                  isActive ? "text-brand-700" : "text-slate-500"
-                }`
-              }
+              className="mobile-tab-link"
             >
-              <i className={`${item.icon} text-base`} aria-hidden="true" />
-              <span>{item.label}</span>
+              {({ isActive }) => (
+                <>
+                  {isActive && (
+                    <motion.span
+                      layoutId="active-mobile-tab"
+                      className="mobile-tab-indicator"
+                      transition={{ type: "spring", stiffness: 440, damping: 34 }}
+                    />
+                  )}
+                  <i className={`${item.icon} text-base`} aria-hidden="true" />
+                  <span>{item.label}</span>
+                </>
+              )}
             </NavLink>
           ))}
         </div>
       </nav>
 
+      <CommandPalette
+        open={commandOpen}
+        categories={categories}
+        onClose={() => setCommandOpen(false)}
+      />
+
       {/* Footer */}
-      <footer className="border-t border-slate-200 bg-white pb-20 md:pb-8">
-        <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
+      <footer className="site-footer">
+        <div className="footer-inner">
           <div className="grid gap-8 md:grid-cols-3">
             <div className="space-y-3">
               <div className="flex items-center gap-2">
@@ -180,7 +327,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
             </div>
 
             <div>
-              <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-500">
+              <h2 className="mb-3 text-xs font-semibold text-slate-500">
                 Informasi & Transparansi
               </h2>
               <ul className="grid grid-cols-2 gap-2 text-sm">
@@ -236,18 +383,15 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
             </div>
 
             <div className="space-y-2.5">
-              <h2 className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+              <h2 className="text-xs font-semibold text-slate-500">
                 Kanal Resmi
               </h2>
               {settings ? (
                 <div className="space-y-1 rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs text-slate-700">
                   <p>
-                    <strong>{settings.rekening_resmi_bank}</strong>:{" "}
-                    <span className="font-mono font-semibold">
-                      {settings.rekening_resmi_nomor}
-                    </span>
+                    Pembayaran hanya dilakukan melalui instruksi checkout resmi
+                    menggunakan QRIS, virtual account, atau e-wallet.
                   </p>
-                  <p>a.n. {settings.rekening_resmi_atas_nama}</p>
                   {waLink && (
                     <a
                       href={waLink}
@@ -269,8 +413,8 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
           </div>
 
           <div className="mt-8 border-t border-slate-100 pt-4 text-center text-xs text-slate-500">
-            © {new Date().getFullYear()} {appName}. Semua pembayaran hanya
-            melalui rekening resmi yang tercantum di situs ini.
+            © {new Date().getFullYear()} {appName}. Pembayaran diproses melalui
+            instruksi checkout resmi.
           </div>
         </div>
       </footer>

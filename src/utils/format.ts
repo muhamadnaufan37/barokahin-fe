@@ -98,3 +98,20 @@ export function extractFirstFieldError(
   if (!firstValue) return null;
   return Array.isArray(firstValue) ? firstValue[0] : firstValue;
 }
+
+const ADDRESS_WARNING_MESSAGES: Record<string, string> = {
+  ADDRESS_LOOKS_INCOMPLETE:
+    "Alamat terlihat belum lengkap. Pastikan nama jalan, nomor, dan detail wilayah sudah benar.",
+  ADDRESS_SUSPICIOUS_TEXT:
+    "Sebagian teks alamat perlu diperiksa kembali sebelum digunakan.",
+};
+
+export function getAddressWarningMessages(
+  warnings: string[] | undefined
+): string[] {
+  return (warnings || []).map(
+    (warning) =>
+      ADDRESS_WARNING_MESSAGES[warning] ||
+      "Periksa kembali detail alamat ini."
+  );
+}
