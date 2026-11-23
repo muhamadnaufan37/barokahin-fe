@@ -1,226 +1,423 @@
-import React from "react";
-import { Link, NavLink, useLocation } from "react-router-dom";
-import { Dropdown } from "primereact/dropdown";
+import React, { useEffect, useState } from "react";
+import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
+import Lenis from "lenis";
 import { Button } from "primereact/button";
-import { Badge } from "primereact/badge";
-import { REGIONS } from "../data/mockData";
-import { useApp } from "../context/AppContext";
-import { AuthDialog } from "./AuthDialog";
+import { InputText } from "primereact/inputtext";
+import { Sidebar } from "primereact/sidebar";
+import { motion } from "motion/react";
+import { CategoryPopover } from "./CategoryPopover";
+import { CommandPalette } from "./CommandPalette";
+import { useBuyer } from "../context/BuyerContext";
+import { useStorefront } from "../context/StorefrontContext";
+import { buildWhatsAppLink } from "../utils/format";
+
+const NAV_LINKS = [
+  { to: "/", label: "Beranda", icon: "pi pi-home" },
+  { to: "/katalog", label: "Katalog", icon: "pi pi-shopping-bag" },
+  { to: "/kegiatan", label: "Kegiatan & Dana", icon: "pi pi-chart-bar" },
+  { to: "/donasi-barang", label: "Donasi Barang", icon: "pi pi-gift" },
+  { to: "/cara-kerja", label: "Cara Kerja", icon: "pi pi-info-circle" },
+];
 
 export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const {
-    currentUser,
-    selectedRegion,
-    setSelectedRegionId,
-    isOffline,
-    setAuthModalOpen,
-    listings,
-    claims,
-  } = useApp();
+  const { categories, settings } = useStorefront();
+  const { cart, token } = useBuyer();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [commandOpen, setCommandOpen] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
 
-  const urgentCount = listings.filter((l) => l.isUrgent && l.status === "active").length;
-  const activeClaimCount = currentUser
-    ? claims.filter(
-        (c) => c.receiverId === currentUser.id && ["requested", "accepted"].includes(c.status)
-      ).length
-    : 0;
+  const appName = import.meta.env.VITE_APP_NAME || "Barokahiin";
+  const waLink = buildWhatsAppLink(
+    settings?.whatsapp_resmi,
+    "Assalamu'alaikum / Halo Admin Barokahiin, saya ingin bertanya tentang barang atau donasi."
+  );
 
-  const regionOptions = REGIONS.map((r) => ({
-    label: `${r.district}, ${r.city}`,
-    value: r.id,
-  }));
+  useEffect(() => {
+    const mediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+    if (mediaQuery.matches) return;
 
-  const navLinkClass = ({ isActive }: { isActive: boolean }) =>
-    `inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-sm font-semibold transition ${
-      isActive
-        ? "bg-teal-50 text-teal-700"
-        : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
-    }`;
+    const lenis = new Lenis({ duration: 0.85, smoothWheel: true });
+    let frame = 0;
+    const animate = (time: number) => {
+      lenis.raf(time);
+      frame = window.requestAnimationFrame(animate);
+    };
+
+    frame = window.requestAnimationFrame(animate);
+    const stopForReducedMotion = (event: MediaQueryListEvent) => {
+      if (event.matches) {
+        window.cancelAnimationFrame(frame);
+        lenis.destroy();
+      }
+    };
+    mediaQuery.addEventListener("change", stopForReducedMotion);
+
+    return () => {
+      window.cancelAnimationFrame(frame);
+      mediaQuery.removeEventListener("change", stopForReducedMotion);
+      lenis.destroy();
+    };
+  }, []);
+
+  useEffect(() => {
+    const handleShortcut = (event: KeyboardEvent) => {
+      if (
+        (event.metaKey || event.ctrlKey) &&
+        event.key.toLowerCase() === "k"
+      ) {
+        event.preventDefault();
+        setCommandOpen((isOpen) => !isOpen);
+      }
+      if (event.key === "Escape") setCommandOpen(false);
+    };
+    window.addEventListener("keydown", handleShortcut);
+    return () => window.removeEventListener("keydown", handleShortcut);
+  }, []);
+
+  useEffect(() => {
+    setMobileMenuOpen(false);
+    setCommandOpen(false);
+  }, [location.pathname]);
+
+  const openCatalogSearch = (query = "") => {
+    setCommandOpen(false);
+    const search = query.trim();
+    navigate(search ? `/katalog?q=${encodeURIComponent(search)}` : "/katalog");
+  };
 
   return (
-    <div className="min-h-screen flex flex-col bg-slate-50 pb-20 md:pb-0">
-      {/* Offline Banner */}
-      {isOffline && (
-        <div
-          role="status"
-          className="bg-amber-600 px-4 py-2 text-center text-xs font-semibold text-white"
-        >
-          <i className="pi pi-wifi mr-1.5" aria-hidden="true" />
-          Koneksi terputus (Mode Offline). Kamu tetap dapat melihat data yang tersimpan.
-        </div>
-      )}
-
-      {/* Top Header */}
-      <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/95 backdrop-blur">
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-2.5 sm:px-6">
-          {/* Brand + Location */}
-          <div className="flex items-center gap-3 min-w-0">
-            <Link to="/" className="flex items-center gap-2 shrink-0">
-              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-teal-600 text-white font-bold shadow-sm">
-                <i className="pi pi-heart-fill text-sm" aria-hidden="true" />
-              </span>
-              <span className="text-lg font-bold tracking-tight text-slate-900">
-                Barokahiin
-              </span>
-            </Link>
-
-            <div className="hidden sm:block w-56">
-              <Dropdown
-                value={selectedRegion.id}
-                options={regionOptions}
-                onChange={(e) => setSelectedRegionId(e.value)}
-                aria-label="Pilih Wilayah"
-                className="w-full text-xs"
-              />
+    <div className="app-shell flex min-h-screen flex-col">
+      <header className="site-header">
+        <div className="site-nav">
+          <Link
+            to="/"
+            className="brand-lockup"
+            aria-label={`${appName}, beranda`}
+          >
+            <div className="brand-mark">
+              <i className="pi pi-heart-fill" aria-hidden="true" />
             </div>
-          </div>
+            <div>
+              <span className="brand-name">{appName}</span>
+              <span className="brand-caption">Lapak barang baik</span>
+            </div>
+          </Link>
 
-          {/* Desktop Navigation */}
-          <nav aria-label="Navigasi Utama" className="hidden md:flex items-center gap-1">
-            <NavLink to="/" end className={navLinkClass}>
-              <i className="pi pi-compass text-sm" aria-hidden="true" />
-              Radar
-            </NavLink>
-            <NavLink to="/segera" className={navLinkClass}>
-              <i className="pi pi-bolt text-sm text-orange-600" aria-hidden="true" />
-              Segera
-              {urgentCount > 0 && <Badge value={urgentCount} severity="warning" />}
-            </NavLink>
-            <NavLink to="/klaim" className={navLinkClass}>
-              <i className="pi pi-inbox text-sm" aria-hidden="true" />
-              Klaim
-              {activeClaimCount > 0 && <Badge value={activeClaimCount} severity="info" />}
-            </NavLink>
-            <NavLink to="/kelola" className={navLinkClass}>
-              <i className="pi pi-list text-sm" aria-hidden="true" />
-              Kelola
-            </NavLink>
-            {(currentUser?.role === "admin" || currentUser?.role === "moderator") && (
-              <NavLink to="/admin" className={navLinkClass}>
-                <i className="pi pi-shield text-sm text-purple-600" aria-hidden="true" />
-                Admin
+          <form
+            className="nav-search"
+            role="search"
+            onSubmit={(event) => {
+              event.preventDefault();
+              const formData = new FormData(event.currentTarget);
+              openCatalogSearch(String(formData.get("q") || ""));
+            }}
+          >
+            <i className="pi pi-search" aria-hidden="true" />
+            <label className="sr-only" htmlFor="quick-search">
+              Cari barang
+            </label>
+            <InputText
+              id="quick-search"
+              name="q"
+              placeholder="Cari barang..."
+            />
+            <Button type="button" className="shortcut-key" onClick={() => setCommandOpen(true)}>
+              Ctrl K
+            </Button>
+          </form>
+
+          <nav aria-label="Navigasi utama" className="desktop-nav">
+            {NAV_LINKS.map((item) => (
+              <NavLink
+                key={item.to}
+                to={item.to}
+                end={item.to === "/"}
+                className={({ isActive }) =>
+                  `nav-pill-link ${isActive ? "is-active" : ""}`
+                }
+              >
+                <span>{item.label}</span>
               </NavLink>
-            )}
+            ))}
+            <CategoryPopover categories={categories} />
           </nav>
 
-          {/* Right actions */}
-          <div className="flex items-center gap-2 shrink-0">
-            <Link to="/bagikan" className="hidden sm:inline-flex">
-              <Button
-                label="Bagikan Barokah"
-                icon="pi pi-plus"
-                size="small"
-                className="touch-target"
-              />
+          <div className="nav-actions">
+            <Link
+              to="/keranjang"
+              className="nav-cart"
+              aria-label={`Keranjang, ${cart.length} barang`}
+            >
+              <i className="pi pi-shopping-cart" aria-hidden="true" />
+              <span>Keranjang</span>
+              {cart.length > 0 && <span className="nav-cart-count">{cart.length}</span>}
+            </Link>
+            <Link
+              to={token ? "/akun" : "/masuk"}
+              className="nav-account"
+              aria-label={token ? "Akun pembeli" : "Masuk ke akun pembeli"}
+            >
+              <i className="pi pi-user" aria-hidden="true" />
+              <span>{token ? "Akun" : "Masuk"}</span>
+            </Link>
+            <Button
+              type="button"
+              className="icon-action search-action"
+              aria-label="Buka pencarian cepat"
+              onClick={() => setCommandOpen(true)}
+            >
+              <i className="pi pi-search" aria-hidden="true" />
+            </Button>
+            <Link
+              to="/donasi-barang"
+              className="nav-donate"
+            >
+              <span>Titip Donasi</span>
             </Link>
 
-            {currentUser ? (
-              <Link
-                to="/profil"
-                className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-sm font-semibold text-slate-700 hover:bg-slate-100 touch-target"
-              >
-                <span className="flex h-7 w-7 items-center justify-center rounded-full bg-teal-600 text-xs font-bold text-white">
-                  {currentUser.avatarInitials}
-                </span>
-                <span className="hidden lg:inline max-w-[110px] truncate">
-                  {currentUser.displayName}
-                </span>
-              </Link>
-            ) : (
-              <Button
-                label="Masuk"
-                icon="pi pi-sign-in"
-                size="small"
-                outlined
-                className="touch-target"
-                onClick={() => setAuthModalOpen(true)}
-              />
-            )}
+            <Button
+              type="button"
+              icon="pi pi-bars"
+              text
+              aria-label="Buka menu navigasi"
+              onClick={() => setMobileMenuOpen(true)}
+              className="mobile-menu-trigger"
+            />
           </div>
-        </div>
-
-        {/* Mobile Region Bar */}
-        <div className="sm:hidden border-t border-slate-100 px-4 py-1.5 bg-slate-50 flex items-center justify-between gap-2">
-          <span className="text-[11px] text-slate-500 shrink-0">
-            <i className="pi pi-map-marker mr-1 text-teal-600" aria-hidden="true" />
-            Wilayah:
-          </span>
-          <Dropdown
-            value={selectedRegion.id}
-            options={regionOptions}
-            onChange={(e) => setSelectedRegionId(e.value)}
-            aria-label="Pilih Wilayah"
-            className="w-full text-xs"
-          />
         </div>
       </header>
 
-      {/* Main Content */}
-      <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-5 sm:px-6">{children}</main>
+      <Sidebar
+        visible={mobileMenuOpen}
+        position="right"
+        onHide={() => setMobileMenuOpen(false)}
+        ariaCloseLabel="Tutup menu"
+        blockScroll
+        header={<span className="brand-name">{appName}</span>}
+        className="mobile-drawer"
+      >
+        <p className="drawer-intro">
+          Temukan barang layak pakai dan ikuti jejak kebaikannya.
+        </p>
+        <nav aria-label="Menu seluler" className="mobile-drawer-links">
+          <NavLink
+            to="/keranjang"
+            onClick={() => setMobileMenuOpen(false)}
+            className="mobile-drawer-link"
+          >
+            <i className="pi pi-shopping-cart text-sm" aria-hidden="true" />
+            <span>Keranjang</span>
+            {cart.length > 0 && <kbd>{cart.length}</kbd>}
+          </NavLink>
+          <NavLink
+            to={token ? "/akun" : "/masuk"}
+            onClick={() => setMobileMenuOpen(false)}
+            className="mobile-drawer-link"
+          >
+            <i className="pi pi-user text-sm" aria-hidden="true" />
+            <span>{token ? "Akun pembeli" : "Masuk"}</span>
+          </NavLink>
+          <NavLink
+            to="/favorit"
+            onClick={() => setMobileMenuOpen(false)}
+            className="mobile-drawer-link"
+          >
+            <i className="pi pi-heart text-sm" aria-hidden="true" />
+            <span>Barang favorit</span>
+          </NavLink>
+          {NAV_LINKS.map((item) => (
+            <NavLink
+              key={item.to}
+              to={item.to}
+              end={item.to === "/"}
+              onClick={() => setMobileMenuOpen(false)}
+              className={({ isActive }) =>
+                `mobile-drawer-link ${isActive ? "is-active" : ""}`
+              }
+            >
+              <i className={`${item.icon} text-sm`} aria-hidden="true" />
+              <span>{item.label}</span>
+            </NavLink>
+          ))}
+          <Button
+            type="button"
+            className="mobile-drawer-link"
+            onClick={() => {
+              setMobileMenuOpen(false);
+              setCommandOpen(true);
+            }}
+          >
+            <i className="pi pi-search" aria-hidden="true" />
+            <span>Pencarian cepat</span>
+            <kbd>Ctrl K</kbd>
+          </Button>
+        </nav>
+        <Link
+          to="/donasi-barang"
+          onClick={() => setMobileMenuOpen(false)}
+          className="drawer-donate"
+        >
+          <i className="pi pi-gift" aria-hidden="true" />
+          <span>Ajukan donasi barang</span>
+        </Link>
+      </Sidebar>
 
-      {/* Desktop Footer */}
-      <footer className="hidden md:block border-t border-slate-200 bg-white py-5 text-xs text-slate-500">
-        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-4 px-6">
-          <p>
-            <strong>Barokahiin</strong> — Berbagi yang barokah, dekat dari rumahmu. (Pilot Bandung
-            & Sekitarnya)
-          </p>
-          <div className="flex items-center gap-4">
-            <Link to="/bantuan" className="hover:text-teal-700">
-              Panduan Aman
-            </Link>
-            <Link to="/aturan" className="hover:text-teal-700">
-              Barang Terlarang
-            </Link>
-            <Link to="/tentang" className="hover:text-teal-700">
-              Tentang & Sponsor
-            </Link>
+      <main className="page-main">
+        {children}
+      </main>
+
+      <nav aria-label="Navigasi bawah seluler" className="mobile-tab-bar">
+        <div className="mobile-tab-inner">
+          {[
+            { to: "/", label: "Beranda", icon: "pi pi-home" },
+            { to: "/katalog", label: "Katalog", icon: "pi pi-shopping-bag" },
+            { to: "/keranjang", label: "Keranjang", icon: "pi pi-shopping-cart" },
+            { to: token ? "/akun" : "/masuk", label: "Akun", icon: "pi pi-user" },
+          ].map((item) => (
+            <NavLink
+              key={item.to}
+              to={item.to}
+              end={item.to === "/"}
+              className="mobile-tab-link"
+            >
+              {({ isActive }) => (
+                <>
+                  {isActive && (
+                    <motion.span
+                      layoutId="active-mobile-tab"
+                      className="mobile-tab-indicator"
+                      transition={{ type: "spring", stiffness: 440, damping: 34 }}
+                    />
+                  )}
+                  <i className={`${item.icon} text-base`} aria-hidden="true" />
+                  <span>{item.label}</span>
+                </>
+              )}
+            </NavLink>
+          ))}
+        </div>
+      </nav>
+
+      <CommandPalette
+        open={commandOpen}
+        categories={categories}
+        onClose={() => setCommandOpen(false)}
+      />
+
+      {/* Footer */}
+      <footer className="site-footer">
+        <div className="footer-inner">
+          <div className="grid gap-8 md:grid-cols-3">
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-600 text-white">
+                  <i className="pi pi-heart-fill text-sm" aria-hidden="true" />
+                </div>
+                <span className="text-base font-bold text-slate-900">
+                  {appName}
+                </span>
+              </div>
+              <p className="text-xs leading-relaxed text-slate-600">
+                {import.meta.env.VITE_APP_TAGLINE ||
+                  "Barang yang kamu beli, kebaikan yang kita danai."}{" "}
+                Identitas donatur dijaga privasinya secara default sebagai{" "}
+                <strong>{settings?.label_anonim || "Sahabat Berbagi"}</strong>.
+              </p>
+            </div>
+
+            <div>
+              <h2 className="mb-3 text-xs font-semibold text-slate-500">
+                Informasi & Transparansi
+              </h2>
+              <ul className="grid grid-cols-2 gap-2 text-sm">
+                <li>
+                  <Link
+                    to="/tentang"
+                    className="inline-flex min-h-[36px] items-center text-slate-600 hover:text-brand-700"
+                  >
+                    Tentang Kami
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    to="/cara-kerja"
+                    className="inline-flex min-h-[36px] items-center text-slate-600 hover:text-brand-700"
+                  >
+                    Cara Kerja
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    to="/faq"
+                    className="inline-flex min-h-[36px] items-center text-slate-600 hover:text-brand-700"
+                  >
+                    FAQ
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    to="/kebijakan"
+                    className="inline-flex min-h-[36px] items-center text-slate-600 hover:text-brand-700"
+                  >
+                    Kebijakan & Privasi
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    to="/kontak"
+                    className="inline-flex min-h-[36px] items-center text-slate-600 hover:text-brand-700"
+                  >
+                    Kontak Resmi
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    to="/kegiatan"
+                    className="inline-flex min-h-[36px] items-center text-slate-600 hover:text-brand-700"
+                  >
+                    Laporan Dana
+                  </Link>
+                </li>
+              </ul>
+            </div>
+
+            <div className="space-y-2.5">
+              <h2 className="text-xs font-semibold text-slate-500">
+                Kanal Resmi
+              </h2>
+              {settings ? (
+                <div className="space-y-1 rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs text-slate-700">
+                  <p>
+                    Pembayaran hanya dilakukan melalui instruksi checkout resmi
+                    menggunakan QRIS, virtual account, atau e-wallet.
+                  </p>
+                  {waLink && (
+                    <a
+                      href={waLink}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="mt-2 inline-flex min-h-[40px] items-center gap-2 rounded-lg bg-emerald-600 px-3 py-1.5 font-semibold text-white hover:bg-emerald-700"
+                    >
+                      <i className="pi pi-whatsapp" aria-hidden="true" />
+                      <span>WhatsApp Resmi</span>
+                    </a>
+                  )}
+                </div>
+              ) : (
+                <p className="text-xs text-slate-500">
+                  Pengumpulan barang area Bandung & sekitarnya.
+                </p>
+              )}
+            </div>
+          </div>
+
+          <div className="mt-8 border-t border-slate-100 pt-4 text-center text-xs text-slate-500">
+            © {new Date().getFullYear()} {appName}. Pembayaran diproses melalui
+            instruksi checkout resmi.
           </div>
         </div>
       </footer>
-
-      {/* Mobile Bottom Navigation */}
-      <nav
-        aria-label="Navigasi Bawah"
-        className="md:hidden fixed bottom-0 inset-x-0 z-30 border-t border-slate-200 bg-white/95 backdrop-blur flex items-center justify-around py-1.5 px-1"
-      >
-        {[
-          { to: "/", icon: "pi-compass", label: "Radar" },
-          { to: "/segera", icon: "pi-bolt", label: "Segera", badge: urgentCount },
-          { to: "/bagikan", icon: "pi-plus-circle", label: "Bagikan", primary: true },
-          { to: "/klaim", icon: "pi-inbox", label: "Klaim", badge: activeClaimCount },
-          { to: "/profil", icon: "pi-user", label: "Profil" },
-        ].map((item) => {
-          const active = location.pathname === item.to;
-          return (
-            <Link
-              key={item.to}
-              to={item.to}
-              className={`relative flex flex-col items-center justify-center rounded-xl px-3 py-1 text-[11px] font-semibold touch-target ${
-                item.primary
-                  ? "text-teal-700"
-                  : active
-                  ? "text-teal-700 bg-teal-50"
-                  : "text-slate-500"
-              }`}
-            >
-              <i
-                className={`pi ${item.icon} ${item.primary ? "text-xl text-teal-600" : "text-base"}`}
-                aria-hidden="true"
-              />
-              <span className="mt-0.5">{item.label}</span>
-              {item.badge !== undefined && item.badge > 0 && (
-                <span className="absolute right-1.5 top-0.5 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-orange-600 px-1 text-[10px] font-bold text-white">
-                  {item.badge}
-                </span>
-              )}
-            </Link>
-          );
-        })}
-      </nav>
-
-      <AuthDialog />
     </div>
   );
 };

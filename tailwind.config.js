@@ -9,13 +9,13 @@ export default {
     extend: {
       colors: {
         brand: {
-          50: "#f0fdfa",
-          100: "#ccfbf1",
-          200: "#99f6e4",
-          500: "#14b8a6",
-          600: "#0d9488",
-          700: "#0f766e",
-          800: "#115e59",
+          50: "#e6e9f8",
+          100: "#d8def4",
+          200: "#b8c2ec",
+          500: "#4354a4",
+          600: "#1f2c7a",
+          700: "#141c52",
+          800: "#101744",
         },
         urgent: {
           50: "#fff7ed",
@@ -26,7 +26,8 @@ export default {
         },
       },
       fontFamily: {
-        sans: ['"Plus Jakarta Sans"', "Inter", "system-ui", "sans-serif"],
+        sans: ['"Plus Jakarta Sans"', "system-ui", "sans-serif"],
+        display: ['"Bricolage Grotesque"', '"Plus Jakarta Sans"', "sans-serif"],
       },
     },
   },
