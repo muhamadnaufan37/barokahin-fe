@@ -174,27 +174,30 @@ export const DonationPage: React.FC = () => {
 
   if (result) {
     return (
-      <div className="mx-auto max-w-2xl rounded-3xl border border-emerald-200 bg-white p-6 shadow-sm sm:p-8">
+      <div className="mx-auto max-w-2xl rounded-kartu-besar border border-teh bg-putih p-6 sm:p-8">
         <div className="flex items-start gap-4">
-          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-emerald-600 text-white">
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-kartu bg-teh text-putih">
             <i className="pi pi-check text-xl" aria-hidden="true" />
           </div>
           <div className="space-y-2">
-            <h1 className="text-xl font-bold text-slate-900">
-              Pengajuan Donasi Diterima
+            <h1 className="font-display text-xl font-bold text-tinta">
+              Pengajuan donasi diterima
             </h1>
-            <p className="text-sm leading-relaxed text-slate-600">
-              Jazakumullahu khairan / terima kasih atas niat baik Anda. Pengajuan
-              barang Anda sudah masuk ke antrean admin dengan detail berikut:
+            <p className="text-sm leading-relaxed text-muted">
+              <span lang="su" className="font-semibold text-nila">
+                Hatur nuhun
+              </span>{" "}
+              (Terima kasih) atas niat baik Anda. Pengajuan barang Anda sudah
+              masuk ke antrean admin dengan detail berikut:
             </p>
           </div>
         </div>
 
-        <div className="mt-6 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm">
+        <div className="mt-6 rounded-kartu border border-teh bg-teh-muda p-4 text-sm">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div>
-              <p className="text-xs text-emerald-800">Kode Barang</p>
-              <p className="font-mono text-lg font-bold text-emerald-950">
+              <p className="text-xs text-teh-tua">Kode barang</p>
+              <p className="font-mono text-lg font-bold text-tinta">
                 {result.kode_barang}
               </p>
             </div>
@@ -204,26 +207,26 @@ export const DonationPage: React.FC = () => {
               rounded
             />
           </div>
-          <p className="mt-2 text-xs text-emerald-900">
+          <p className="mt-2 text-xs text-teh-tua">
             Admin kami akan menghubungi Anda melalui kontak{" "}
-            <strong>{kontakDonatur}</strong> untuk koordinasi penerimaan &
-            kurasi barang. Data pribadi Anda tidak akan ditampilkan di publik.
+            <strong className="text-tinta">{kontakDonatur}</strong> untuk
+            koordinasi penerimaan & kurasi barang. Data pribadi Anda tidak akan
+            ditampilkan di publik.
           </p>
         </div>
 
         <div className="mt-6 flex flex-wrap gap-3">
           <Button
             type="button"
-            label="Ajukan Barang Lain"
+            label="Ajukan barang lain"
             icon="pi pi-plus"
             onClick={resetForm}
-            className="min-h-[44px]"
           />
           <Link
             to="/katalog"
-            className="inline-flex min-h-[44px] items-center gap-2 rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-100"
+            className="inline-flex min-h-[44px] items-center gap-2 rounded-pil border border-garis bg-putih px-5 py-2.5 text-sm font-semibold text-tinta hover:bg-kertas"
           >
-            Lihat Katalog
+            Lihat katalog
           </Link>
         </div>
       </div>
@@ -233,10 +236,10 @@ export const DonationPage: React.FC = () => {
   return (
     <div className="mx-auto max-w-2xl space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-slate-900">
-          Ajukan Donasi Barang
+        <h1 className="font-display text-2xl font-bold text-tinta">
+          Ajukan donasi barang
         </h1>
-        <p className="mt-1 text-sm text-slate-600">
+        <p className="mt-1 text-sm text-muted">
           Serahkan barang layak pakai Anda untuk dikurasi dan dijual oleh admin
           Barokahiin. Seluruh hasil penjualan digunakan untuk mendanai kegiatan.
         </p>
@@ -248,7 +251,7 @@ export const DonationPage: React.FC = () => {
         className="w-full justify-start"
         content={
           <div className="text-left text-xs leading-relaxed">
-            <strong className="block text-sm">Privasi Donatur Terjaga</strong>
+            <strong className="block text-sm">Privasi donatur terjaga</strong>
             Nama, kontak, dan wilayah Anda hanya digunakan admin untuk
             koordinasi dan <strong>tidak pernah ditampilkan</strong> di
             storefront publik. Kami juga tidak pernah meminta NIK/KTP.
@@ -259,7 +262,7 @@ export const DonationPage: React.FC = () => {
       <form
         onSubmit={handleSubmit}
         noValidate
-        className="space-y-6 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8"
+        className="space-y-6 rounded-kartu-besar border border-garis bg-putih p-6 sm:p-8"
       >
         {error && (
           <Message
@@ -271,17 +274,17 @@ export const DonationPage: React.FC = () => {
 
         {/* Section 1: Data Donatur */}
         <div className="space-y-4">
-          <h2 className="border-b border-slate-100 pb-2 text-sm font-bold uppercase tracking-wider text-slate-500">
-            1. Data Donatur
+          <h2 className="border-b border-garis pb-2 text-xs font-bold uppercase tracking-wider text-muted">
+            1. Data donatur
           </h2>
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-1">
               <label
                 htmlFor="nama-donatur"
-                className="block text-xs font-semibold text-slate-700"
+                className="block text-xs font-semibold text-tinta"
               >
-                Nama Lengkap *
+                Nama lengkap *
               </label>
               <InputText
                 id="nama-donatur"
@@ -309,7 +312,7 @@ export const DonationPage: React.FC = () => {
             <div className="space-y-1">
               <label
                 htmlFor="kontak-donatur"
-                className="block text-xs font-semibold text-slate-700"
+                className="block text-xs font-semibold text-tinta"
               >
                 Nomor WhatsApp / HP *
               </label>
@@ -341,9 +344,9 @@ export const DonationPage: React.FC = () => {
           <div className="space-y-1">
             <label
               htmlFor="wilayah-donatur"
-              className="block text-xs font-semibold text-slate-700"
+              className="block text-xs font-semibold text-tinta"
             >
-              Wilayah (Bandung & Sekitarnya)
+              Wilayah (Bandung Raya & sekitarnya)
             </label>
             <InputText
               id="wilayah-donatur"
@@ -354,7 +357,7 @@ export const DonationPage: React.FC = () => {
             />
           </div>
 
-          <div className="flex items-start gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3.5 text-xs">
+          <div className="flex items-start gap-3 rounded-kartu border border-garis bg-kertas p-3.5 text-xs">
             <Checkbox
               inputId="preferensi-anonim"
               checked={preferensiAnonim}
@@ -362,7 +365,7 @@ export const DonationPage: React.FC = () => {
             />
             <label
               htmlFor="preferensi-anonim"
-              className="cursor-pointer text-slate-700"
+              className="cursor-pointer text-tinta"
             >
               Tampilkan label anonim{" "}
               <strong>"{settings?.label_anonim || "Sahabat Berbagi"}"</strong>{" "}
@@ -373,16 +376,16 @@ export const DonationPage: React.FC = () => {
 
         {/* Section 2: Data Barang */}
         <div className="space-y-4">
-          <h2 className="border-b border-slate-100 pb-2 text-sm font-bold uppercase tracking-wider text-slate-500">
-            2. Informasi Barang
+          <h2 className="border-b border-garis pb-2 text-xs font-bold uppercase tracking-wider text-muted">
+            2. Informasi barang
           </h2>
 
           <div className="space-y-1">
             <label
               htmlFor="nama-barang"
-              className="block text-xs font-semibold text-slate-700"
+              className="block text-xs font-semibold text-tinta"
             >
-              Nama / Jenis Barang *
+              Nama / jenis barang *
             </label>
             <InputText
               id="nama-barang"
@@ -411,7 +414,7 @@ export const DonationPage: React.FC = () => {
             <div className="space-y-1">
               <label
                 htmlFor="kategori-barang"
-                className="block text-xs font-semibold text-slate-700"
+                className="block text-xs font-semibold text-tinta"
               >
                 Kategori
               </label>
@@ -431,9 +434,9 @@ export const DonationPage: React.FC = () => {
             <div className="space-y-1">
               <label
                 htmlFor="kondisi-barang"
-                className="block text-xs font-semibold text-slate-700"
+                className="block text-xs font-semibold text-tinta"
               >
-                Perkiraan Kondisi *
+                Perkiraan kondisi *
               </label>
               <Dropdown
                 inputId="kondisi-barang"
@@ -454,9 +457,9 @@ export const DonationPage: React.FC = () => {
             <div className="space-y-1">
               <label
                 htmlFor="jumlah-barang"
-                className="block text-xs font-semibold text-slate-700"
+                className="block text-xs font-semibold text-tinta"
               >
-                Jumlah Unit
+                Jumlah unit
               </label>
               <InputText
                 id="jumlah-barang"
@@ -466,7 +469,9 @@ export const DonationPage: React.FC = () => {
                 value={String(jumlah)}
                 onChange={(e) => {
                   const val = parseInt(e.target.value, 10);
-                  setJumlah(Number.isNaN(val) ? 1 : Math.max(1, Math.min(100, val)));
+                  setJumlah(
+                    Number.isNaN(val) ? 1 : Math.max(1, Math.min(100, val))
+                  );
                   if (fieldErrors.jumlah) {
                     setFieldErrors((prev) => ({ ...prev, jumlah: undefined }));
                   }
@@ -482,9 +487,9 @@ export const DonationPage: React.FC = () => {
             <div className="space-y-1">
               <label
                 htmlFor="cara-terima"
-                className="block text-xs font-semibold text-slate-700"
+                className="block text-xs font-semibold text-tinta"
               >
-                Cara Penyerahan *
+                Cara penyerahan *
               </label>
               <Dropdown
                 inputId="cara-terima"
@@ -504,9 +509,9 @@ export const DonationPage: React.FC = () => {
           <div className="space-y-1">
             <label
               htmlFor="catatan-barang"
-              className="block text-xs font-semibold text-slate-700"
+              className="block text-xs font-semibold text-tinta"
             >
-              Catatan Kondisi / Kekurangan (opsional)
+              Catatan kondisi / kekurangan (opsional)
             </label>
             <InputTextarea
               id="catatan-barang"
@@ -522,15 +527,15 @@ export const DonationPage: React.FC = () => {
 
         {/* Section 3: Persetujuan */}
         <div className="space-y-3">
-          <h2 className="border-b border-slate-100 pb-2 text-sm font-bold uppercase tracking-wider text-slate-500">
-            3. Persetujuan Donatur *
+          <h2 className="border-b border-garis pb-2 text-xs font-bold uppercase tracking-wider text-muted">
+            3. Persetujuan donatur *
           </h2>
 
           <div
-            className={`space-y-1 rounded-xl border p-3.5 text-xs ${
+            className={`space-y-1 rounded-kartu border p-3.5 text-xs ${
               fieldErrors.persetujuan_jual
-                ? "border-rose-400 bg-rose-50/40"
-                : "border-slate-200"
+                ? "border-bahaya bg-bahaya-muda"
+                : "border-garis"
             }`}
           >
             <div className="flex items-start gap-3">
@@ -550,7 +555,7 @@ export const DonationPage: React.FC = () => {
               />
               <label
                 htmlFor="persetujuan-jual"
-                className="cursor-pointer leading-relaxed text-slate-700"
+                className="cursor-pointer leading-relaxed text-tinta"
               >
                 Saya menyatakan barang ini layak pakai dan{" "}
                 <strong>
@@ -568,10 +573,10 @@ export const DonationPage: React.FC = () => {
           </div>
 
           <div
-            className={`space-y-1 rounded-xl border p-3.5 text-xs ${
+            className={`space-y-1 rounded-kartu border p-3.5 text-xs ${
               fieldErrors.persetujuan_media
-                ? "border-rose-400 bg-rose-50/40"
-                : "border-slate-200"
+                ? "border-bahaya bg-bahaya-muda"
+                : "border-garis"
             }`}
           >
             <div className="flex items-start gap-3">
@@ -591,7 +596,7 @@ export const DonationPage: React.FC = () => {
               />
               <label
                 htmlFor="persetujuan-media"
-                className="cursor-pointer leading-relaxed text-slate-700"
+                className="cursor-pointer leading-relaxed text-tinta"
               >
                 Saya{" "}
                 <strong>
@@ -609,13 +614,21 @@ export const DonationPage: React.FC = () => {
           </div>
         </div>
 
-        <Button
+        <button
           type="submit"
-          label={submitting ? "Mengirim Pengajuan..." : "Kirim Pengajuan Donasi"}
-          icon="pi pi-gift"
-          loading={submitting}
-          className="w-full justify-center"
-        />
+          disabled={submitting}
+          className="btn-cta w-full text-sm"
+        >
+          <i
+            className={`pi ${
+              submitting ? "pi-spin pi-spinner" : "pi-gift"
+            } text-sm`}
+            aria-hidden="true"
+          />
+          <span>
+            {submitting ? "Mengirim pengajuan..." : "Kirim pengajuan donasi"}
+          </span>
+        </button>
       </form>
     </div>
   );

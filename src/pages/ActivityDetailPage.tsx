@@ -9,7 +9,6 @@ import { Tag } from "primereact/tag";
 import { publicApi, resolveMediaUrl } from "../services/publicApi";
 import { PublicActivityDetail, PublicActivityExpense } from "../types";
 import { formatDateId, formatRupiah } from "../utils/format";
-import { setPageMetadata } from "../utils/seo";
 
 export const ActivityDetailPage: React.FC = () => {
   const { slug } = useParams<{ slug: string }>();
@@ -28,12 +27,7 @@ export const ActivityDetailPage: React.FC = () => {
         const data = await publicApi.getActivityBySlug(slug);
         if (!active) return;
         setActivity(data);
-        setPageMetadata({
-          title: `${data.judul} — Transparansi Dana Barokahiin`,
-          description: data.deskripsi,
-          path: `/kegiatan/${encodeURIComponent(data.slug)}`,
-          image: data.media.find((media) => media.tipe === "foto")?.url,
-        });
+        document.title = `${data.judul} — Transparansi Dana Barokahiin`;
       } catch (err) {
         if (active) {
           setError(
@@ -55,24 +49,24 @@ export const ActivityDetailPage: React.FC = () => {
     return (
       <div className="space-y-5">
         <Skeleton width="16rem" height="1.5rem" />
-        <Skeleton height="12rem" borderRadius="1rem" />
-        <Skeleton height="16rem" borderRadius="1rem" />
+        <Skeleton height="12rem" borderRadius="12px" />
+        <Skeleton height="16rem" borderRadius="12px" />
       </div>
     );
   }
 
   if (error || !activity) {
     return (
-      <div className="mx-auto max-w-xl space-y-4 rounded-2xl border border-slate-200 bg-white p-8 text-center">
-        <h1 className="text-lg font-bold text-slate-900">
-          Kegiatan Tidak Ditemukan
+      <div className="mx-auto max-w-xl space-y-4 rounded-kartu-besar border border-garis bg-putih p-8 text-center">
+        <h1 className="font-display text-lg font-bold text-tinta">
+          Kegiatan tidak ditemukan
         </h1>
         {error && <Message severity="error" text={error} className="w-full" />}
         <Link
           to="/kegiatan"
-          className="inline-flex min-h-[44px] items-center gap-2 rounded-xl bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white"
+          className="inline-flex min-h-[44px] items-center gap-2 rounded-pil bg-nila px-5 py-2.5 text-sm font-semibold text-putih"
         >
-          Kembali ke Daftar Kegiatan
+          Kembali ke daftar kegiatan
         </Link>
       </div>
     );
@@ -87,102 +81,83 @@ export const ActivityDetailPage: React.FC = () => {
           )
         )
       : 0;
-  const sisaDana = Math.max(
-    0,
-    activity.dana_terkumpul_rupiah - (activity.total_penggunaan_rupiah ?? 0)
-  );
+  const totalPenggunaan = activity.total_penggunaan_rupiah ?? 0;
+  const sisaDana = Math.max(0, activity.dana_terkumpul_rupiah - totalPenggunaan);
 
   return (
     <div className="space-y-8">
       <nav
         aria-label="Breadcrumb"
-        className="flex items-center gap-2 text-xs text-slate-500"
+        className="flex items-center gap-2 text-xs text-muted"
       >
-        <Link to="/" className="hover:text-brand-700">
+        <Link to="/" className="hover:text-nila">
           Beranda
         </Link>
         <span>/</span>
-        <Link to="/kegiatan" className="hover:text-brand-700">
+        <Link to="/kegiatan" className="hover:text-nila">
           Kegiatan & Dana
         </Link>
         <span>/</span>
-        <span className="font-medium text-slate-800">{activity.judul}</span>
+        <span className="font-medium text-tinta">{activity.judul}</span>
       </nav>
 
       {/* Header & Progress */}
-      <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
+      <section className="rounded-kartu-besar border border-garis bg-putih p-6 sm:p-8">
         <div className="flex flex-wrap items-center gap-2.5">
           <Tag
-            value={activity.status === "aktif" ? "Kegiatan Aktif" : "Selesai"}
+            value={activity.status === "aktif" ? "Kegiatan aktif" : "Selesai"}
             severity={activity.status === "aktif" ? "success" : "secondary"}
             rounded
             className="px-3 py-1 text-xs"
           />
           {activity.periode && (
-            <span className="text-xs font-medium text-slate-500">
+            <span className="text-xs font-medium text-muted">
               Periode: {activity.periode}
             </span>
           )}
         </div>
 
-        <h1 className="mt-3 text-2xl font-bold text-slate-900 sm:text-3xl">
+        <h1 className="font-display mt-3 text-2xl font-bold text-tinta sm:text-3xl">
           {activity.judul}
         </h1>
-        <p className="mt-3 whitespace-pre-line text-sm leading-relaxed text-slate-700">
+        <p className="mt-3 whitespace-pre-line text-sm leading-relaxed text-tinta">
           {activity.deskripsi}
         </p>
-        {(activity.wilayah || activity.penerima_manfaat_desc) && (
-          <div className="mt-3 flex flex-wrap gap-2 text-xs">
-            {activity.wilayah && (
-              <span className="readiness-badge">
-                Wilayah: {activity.wilayah}
-              </span>
-            )}
-            {activity.penerima_manfaat_desc && (
-              <span className="readiness-badge">
-                Penerima manfaat: {activity.penerima_manfaat_desc}
-              </span>
-            )}
-          </div>
-        )}
 
         <div className="mt-6 grid gap-3 sm:grid-cols-4">
-          <div className="rounded-2xl bg-brand-50 p-4">
-            <p className="text-xs font-medium text-brand-800">Dana Terkumpul</p>
-            <p className="mt-1 text-lg font-bold text-brand-900">
+          <div className="rounded-kartu bg-teh-muda p-4">
+            <p className="text-xs font-medium text-teh-tua">Dana terkumpul</p>
+            <p className="font-display tabular-nums mt-1 text-lg font-bold text-teh-tua">
               {formatRupiah(activity.dana_terkumpul_rupiah)}
             </p>
           </div>
-          <div className="rounded-2xl bg-slate-50 p-4">
-            <p className="text-xs font-medium text-slate-500">Target Dana</p>
-            <p className="mt-1 text-lg font-bold text-slate-900">
+          <div className="rounded-kartu bg-kertas p-4">
+            <p className="text-xs font-medium text-muted">Target dana</p>
+            <p className="font-display tabular-nums mt-1 text-lg font-bold text-tinta">
               {formatRupiah(activity.target_dana)}
             </p>
           </div>
-          <div className="rounded-2xl bg-slate-50 p-4">
-            <p className="text-xs font-medium text-slate-500">
-              Dana Digunakan
-            </p>
-            <p className="mt-1 text-lg font-bold text-slate-900">
-              {activity.total_penggunaan_rupiah === null
-                ? "Belum dilaporkan"
-                : formatRupiah(activity.total_penggunaan_rupiah)}
+          <div className="rounded-kartu bg-kertas p-4">
+            <p className="text-xs font-medium text-muted">Dana digunakan</p>
+            <p className="font-display tabular-nums mt-1 text-lg font-bold text-nila">
+              {formatRupiah(totalPenggunaan)}
             </p>
           </div>
-          <div className="rounded-2xl bg-slate-50 p-4">
-            <p className="text-xs font-medium text-slate-500">Saldo Tersisa</p>
-            <p className="mt-1 text-lg font-bold text-slate-900">
-              {activity.total_penggunaan_rupiah === null
-                ? "Belum dilaporkan"
-                : formatRupiah(sisaDana)}
+          <div className="rounded-kartu bg-kertas p-4">
+            <p className="text-xs font-medium text-muted">Saldo tersisa</p>
+            <p className="font-display tabular-nums mt-1 text-lg font-bold text-tinta">
+              {formatRupiah(sisaDana)}
             </p>
           </div>
         </div>
 
         <div className="mt-4 space-y-1.5">
-          <div className="flex justify-between text-xs text-slate-600">
-            <span>Progres Pencapaian Target</span>
-            <span className="font-semibold">{pct}%</span>
+          <div className="flex justify-between text-xs text-muted">
+            <span>Progres pencapaian target</span>
+            <span className="tabular-nums font-semibold text-teh-tua">
+              {pct}% ({formatRupiah(activity.dana_terkumpul_rupiah)} /{" "}
+              {formatRupiah(activity.target_dana)})
+            </span>
           </div>
           <ProgressBar value={pct} showValue={false} className="h-3" />
         </div>
@@ -190,15 +165,19 @@ export const ActivityDetailPage: React.FC = () => {
 
       {/* Laporan Penggunaan Dana */}
       <section className="space-y-4">
-        <h2 className="text-lg font-bold text-slate-900 sm:text-xl">
-          Laporan Penggunaan Dana
+        <h2 className="font-display text-lg font-bold text-tinta sm:text-xl">
+          Laporan penggunaan dana
         </h2>
-        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <div
+          role="region"
+          tabIndex={0}
+          aria-label="Laporan penggunaan dana"
+          className="overflow-x-auto rounded-kartu border border-garis bg-putih"
+        >
           <DataTable
             value={activity.laporan_penggunaan}
             dataKey="uuid"
             emptyMessage="Belum ada rincian pengeluaran yang dipublikasikan untuk kegiatan ini."
-            responsiveLayout="scroll"
             stripedRows
             size="small"
           >
@@ -209,9 +188,9 @@ export const ActivityDetailPage: React.FC = () => {
             />
             <Column
               field="pos"
-              header="Pos Penggunaan"
+              header="Pos penggunaan"
               body={(row: PublicActivityExpense) => (
-                <span className="font-semibold text-slate-900">{row.pos}</span>
+                <span className="font-semibold text-tinta">{row.pos}</span>
               )}
             />
             <Column
@@ -224,7 +203,7 @@ export const ActivityDetailPage: React.FC = () => {
               header="Nominal"
               align="right"
               body={(row: PublicActivityExpense) => (
-                <span className="font-semibold text-slate-900">
+                <span className="tabular-nums font-semibold text-nila">
                   {formatRupiah(row.nominal_rupiah)}
                 </span>
               )}
@@ -236,22 +215,22 @@ export const ActivityDetailPage: React.FC = () => {
       {/* Dokumentasi Kegiatan */}
       {activity.media.length > 0 && (
         <section className="space-y-4">
-          <h2 className="text-lg font-bold text-slate-900 sm:text-xl">
-            Dokumentasi Kegiatan
+          <h2 className="font-display text-lg font-bold text-tinta sm:text-xl">
+            Dokumentasi kegiatan
           </h2>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {activity.media.map((m) => (
               <figure
                 key={m.uuid}
-                className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"
+                className="overflow-hidden rounded-kartu border border-garis bg-putih"
               >
-                <div className="aspect-[4/3] w-full bg-slate-100">
+                <div className="aspect-[4/3] w-full bg-kertas">
                   {m.tipe === "video" ? (
                     <video
                       src={resolveMediaUrl(m.url) || undefined}
                       controls
                       preload="none"
-                      className="h-full w-full bg-black object-contain"
+                      className="h-full w-full bg-tinta object-contain"
                     />
                   ) : (
                     <img
@@ -263,7 +242,7 @@ export const ActivityDetailPage: React.FC = () => {
                   )}
                 </div>
                 {m.keterangan && (
-                  <figcaption className="p-3 text-xs text-slate-600">
+                  <figcaption className="p-3 text-xs text-muted">
                     {m.keterangan}
                   </figcaption>
                 )}

@@ -310,18 +310,27 @@ export interface CheckoutValidation {
 export interface CheckoutOrder {
   uuid: string;
   kode: string;
+  kode_pesanan?: string;
   status: string;
   hold_expires_at: string;
   serah?: "ambil" | "kirim";
   address_uuid?: string;
+  total_idr?: number;
+  items?: Array<{ judul: string; price_idr: number }>;
 }
 
 export interface PaymentInstruction {
+  uuid?: string;
   status: string;
   metode: "qris" | "va" | "ewallet";
+  gateway?: string;
+  gateway_ref?: string;
+  jumlah_idr?: number;
+  kedaluwarsa_pada?: string;
   expires_at?: string;
   payment_url?: string;
   qris_url?: string;
+  qr_string?: string;
   va_number?: string;
   instructions?: string[];
 }
@@ -329,6 +338,7 @@ export interface PaymentInstruction {
 export interface BuyerOrder {
   uuid: string;
   kode: string;
+  kode_pesanan?: string;
   status: string;
   created_at?: string;
   items?: Array<{ judul: string; price_idr: number }>;

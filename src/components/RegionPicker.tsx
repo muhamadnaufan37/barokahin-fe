@@ -9,7 +9,8 @@ interface RegionPickerProps {
   onChange: (
     region: PublicRegion | null,
     path?: string[],
-    regionPath?: PublicRegion[]
+    regionPath?: PublicRegion[],
+    isLeaf?: boolean
   ) => void;
   label?: string;
 }
@@ -120,7 +121,10 @@ export const RegionPicker: React.FC<RegionPickerProps> = ({
           region,
         ]
       : [];
-    onChange(region, nextPath.map((entry) => entry.id), nextPath);
+    const nextPathIds = nextPath.map((entry) => entry.id);
+    const isAlreadyLeaf =
+      region?.level === "kelurahan" || region?.level === 4;
+    onChange(region, nextPathIds, nextPath, isAlreadyLeaf);
     if (!region) return;
 
     setLoading(true);
@@ -128,6 +132,8 @@ export const RegionPicker: React.FC<RegionPickerProps> = ({
       const children = await publicApi.getRegions(region.id);
       if (children.length) {
         setLevels((current) => [...current.slice(0, index + 1), children]);
+      } else {
+        onChange(region, nextPathIds, nextPath, true);
       }
     } catch (cause) {
       setError(
@@ -140,13 +146,13 @@ export const RegionPicker: React.FC<RegionPickerProps> = ({
 
   return (
     <fieldset className="region-picker space-y-3">
-      <legend className="text-sm font-semibold text-slate-800">
+      <legend className="text-sm font-semibold text-tinta">
         {label}
       </legend>
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {levels.map((options, index) => (
           <label className="region-picker-field min-w-0" key={index}>
-            <span className="mb-1 block text-xs font-medium text-slate-600">
+            <span className="mb-1 block text-xs font-medium text-muted">
               {index === 0
                 ? "Provinsi"
                 : index === 1
@@ -188,7 +194,7 @@ export const RegionPicker: React.FC<RegionPickerProps> = ({
         ))}
       </div>
       {loading && (
-        <p className="text-xs text-slate-500" role="status">
+        <p className="text-xs text-muted" role="status">
           Memuat wilayah…
         </p>
       )}

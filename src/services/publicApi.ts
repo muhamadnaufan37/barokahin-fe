@@ -761,7 +761,7 @@ export const publicApi = {
       accept_terms: true;
       terms_version: "0.5";
     }
-  ): Promise<unknown> {
+  ): Promise<BuyerProfileCompleteness> {
     return buyerRequest("/me/profile", token, {
       method: "PATCH",
       body: JSON.stringify(payload),
@@ -780,22 +780,44 @@ export const publicApi = {
 
   async getBuyerAddresses(token: string): Promise<BuyerAddress[]> {
     const response = await buyerRequest<
-      BuyerAddress[] | { items: BuyerAddress[] }
+      Array<BuyerAddress & { phone_penerima?: string; jalan_nomor?: string }> | { items: Array<BuyerAddress & { phone_penerima?: string; jalan_nomor?: string }> }
     >("/me/addresses", token);
-    return Array.isArray(response) ? response : response.items;
+    const list = Array.isArray(response) ? response : response.items;
+    return list.map((addr) => ({
+      ...addr,
+      kontak_penerima: addr.kontak_penerima || addr.phone_penerima || "",
+      jalan: addr.jalan || addr.jalan_nomor || "",
+    }));
   },
 
-  createBuyerAddress(
+  async createBuyerAddress(
     token: string,
     payload: Omit<
       BuyerAddress,
       "uuid" | "warnings" | "region_nama" | "utama"
     >
   ): Promise<BuyerAddress> {
-    return buyerRequest("/me/addresses", token, {
+    const apiPayload = {
+      penerima: payload.penerima,
+      phone_penerima: payload.kontak_penerima,
+      region_id: payload.region_id,
+      kode_pos: payload.kode_pos,
+      jalan_nomor: payload.jalan,
+      rt_rw: payload.rt_rw,
+      patokan: payload.patokan,
+      jenis_tempat: payload.jenis_tempat,
+    };
+    const created = await buyerRequest<
+      BuyerAddress & { phone_penerima?: string; jalan_nomor?: string }
+    >("/me/addresses", token, {
       method: "POST",
-      body: JSON.stringify(payload),
+      body: JSON.stringify(apiPayload),
     });
+    return {
+      ...created,
+      kontak_penerima: created.kontak_penerima || created.phone_penerima || payload.kontak_penerima,
+      jalan: created.jalan || created.jalan_nomor || payload.jalan,
+    };
   },
 
   deleteBuyerAddress(token: string, uuid: string): Promise<unknown> {
@@ -829,7 +851,7 @@ export const publicApi = {
     });
   },
 
-  confirmBuyerCheckout(
+  async confirmBuyerCheckout(
     token: string,
     payload: {
       item_uuids: string[];
@@ -840,11 +862,29 @@ export const publicApi = {
     },
     idempotencyKey = createIdempotencyKey()
   ): Promise<CheckoutOrder> {
-    return buyerRequest("/checkout/confirm", token, {
+    const raw = await buyerRequest<
+      Omit<CheckoutOrder, "items"> & {
+        kode_pesanan?: string;
+        items?: Array<{
+          judul?: string;
+          judul_snapshot?: string;
+          price_idr?: number;
+          harga_idr?: number;
+        }>;
+      }
+    >("/checkout/confirm", token, {
       method: "POST",
       headers: { "Idempotency-Key": idempotencyKey },
       body: JSON.stringify(payload),
     });
+    return {
+      ...raw,
+      kode: raw.kode || raw.kode_pesanan || raw.uuid,
+      items: raw.items?.map((item) => ({
+        judul: item.judul || item.judul_snapshot || "Barang",
+        price_idr: item.price_idr ?? item.harga_idr ?? 0,
+      })),
+    };
   },
 
   createBuyerPayment(
@@ -864,8 +904,26 @@ export const publicApi = {
     return buyerRequest("/me", token, { method: "DELETE" });
   },
 
-  getBuyerOrder(token: string, code: string): Promise<BuyerOrder> {
-    return buyerRequest(`/orders/${encodeURIComponent(code)}`, token);
+  async getBuyerOrder(token: string, code: string): Promise<BuyerOrder> {
+    const raw = await buyerRequest<
+      Omit<BuyerOrder, "items"> & {
+        kode_pesanan?: string;
+        items?: Array<{
+          judul?: string;
+          judul_snapshot?: string;
+          price_idr?: number;
+          harga_idr?: number;
+        }>;
+      }
+    >(`/orders/${encodeURIComponent(code)}`, token);
+    return {
+      ...raw,
+      kode: raw.kode || raw.kode_pesanan || code,
+      items: raw.items?.map((item) => ({
+        judul: item.judul || item.judul_snapshot || "Barang",
+        price_idr: item.price_idr ?? item.harga_idr ?? 0,
+      })),
+    };
   },
 
   getBuyerImpactReceipt(token: string, code: string): Promise<ImpactReceipt> {

@@ -1,77 +1,85 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { gsap } from "gsap";
 import { Message } from "primereact/message";
 import { ProgressBar } from "primereact/progressbar";
 import { Skeleton } from "primereact/skeleton";
 import { Tag } from "primereact/tag";
 import { ItemCard } from "../components/ItemCard";
-import { RegionPicker } from "../components/RegionPicker";
 import { TrustPaymentBanner } from "../components/TrustPaymentBanner";
 import { useBuyer } from "../context/BuyerContext";
 import { useStorefront } from "../context/StorefrontContext";
 import { publicApi } from "../services/publicApi";
-import { PublicActivity, PublicItem, PublicStore } from "../types";
-import { formatRupiah } from "../utils/format";
-import { setPageMetadata } from "../utils/seo";
+import { BuyerOrder, PublicActivity, PublicItem } from "../types";
+import { getCategoryMeta } from "../utils/category";
+import { formatDateId, formatRupiah } from "../utils/format";
 
-const STEPS = [
+const RECEIPT_ROWS = [
   {
-    title: "Barang diserahkan",
-    description:
-      "Donatur mengajukan barang layak pakai dan memberi izin untuk dijual.",
+    id: "receipt-harga",
+    label: "1. Nilai barang terkurasi",
+    amount: "Rp 150.000",
+    detail:
+      "Harga ditetapkan admin secara wajar setelah memeriksa kondisi fisik, kelengkapan, dan fungsi barang.",
   },
   {
-    title: "Dikurasi dengan jujur",
-    description:
-      "Koordinator memeriksa kondisi, mencatat kekurangan, dan menyiapkan barang.",
+    id: "receipt-operasional",
+    label: "2. Biaya kurasi & perawatan",
+    amount: "Rp 0 (dikelola)",
+    detail:
+      "Pencatatan dan publikasi dilakukan transparan oleh tim pengelola tanpa potongan tersembunyi.",
   },
   {
-    title: "Kamu memesan",
-    description:
-      "Masukkan barang ke keranjang, lengkapi data, lalu periksa pesanan sebelum konfirmasi.",
-  },
-  {
-    title: "Bayar dan lacak",
-    description:
-      "Bayar melalui QRIS, virtual account, atau e-wallet. Dana kegiatan dicatat dan dilaporkan.",
+    id: "receipt-dana",
+    label: "3. Dana masuk untuk kegiatan",
+    amount: "Rp 150.000",
+    detail:
+      "Pembelian tercatat sebagai penjualan resmi dan langsung dialokasikan ke kegiatan sosial/keagamaan.",
   },
 ];
 
 export const HomePage: React.FC = () => {
   const { impact, settings, categories } = useStorefront();
-  const { selectedRegion, setSelectedRegion } = useBuyer();
+  const { token, recentOrderCodes } = useBuyer();
   const [items, setItems] = useState<PublicItem[]>([]);
   const [activities, setActivities] = useState<PublicActivity[]>([]);
-  const [stores, setStores] = useState<PublicStore[]>([]);
-  const [activityError, setActivityError] = useState<string | null>(null);
-  const [storeError, setStoreError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [pendingOrders, setPendingOrders] = useState<BuyerOrder[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const receiptRef = useRef<HTMLElement>(null);
+  const [openReceiptId, setOpenReceiptId] = useState<string | null>(
+    "receipt-dana"
+  );
 
   useEffect(() => {
-    setPageMetadata({
-      title: "Barokahiin — Barang layak pakai, kebaikan yang tercatat",
-      description:
-        "Temukan barang layak pakai yang dikurasi. Setiap penjualan mendukung kegiatan sosial dan keagamaan dengan laporan dana transparan.",
-      path: "/",
+    if (!token || !recentOrderCodes.length) {
+      setPendingOrders([]);
+      return;
+    }
+    let active = true;
+    Promise.allSettled(
+      recentOrderCodes.map((code) => publicApi.getBuyerOrder(token, code))
+    ).then((results) => {
+      if (!active) return;
+      const activeOrders = results
+        .flatMap((r) => (r.status === "fulfilled" ? [r.value] : []))
+        .filter((order) => order.status === "menunggu_bayar");
+      setPendingOrders(activeOrders);
     });
+    return () => {
+      active = false;
+    };
+  }, [token, recentOrderCodes]);
+
+  useEffect(() => {
+    document.title =
+      "Barokahiin — Barang yang kamu beli, kebaikan yang kita danai";
     let active = true;
 
     const loadHomeData = async () => {
       setLoading(true);
       setError(null);
-      setActivityError(null);
-      setStoreError(null);
-      const [itemsRes, activitiesRes, storesRes] = await Promise.allSettled([
-        publicApi.getItems({
-          per_page: 6,
-          sort: "terbaru",
-          region: selectedRegion?.id,
-        }),
+      const [itemsRes, activitiesRes] = await Promise.allSettled([
+        publicApi.getItems({ per_page: 8, sort: "terbaru" }),
         publicApi.getActivities(),
-        publicApi.getStores(),
       ]);
 
       if (!active) return;
@@ -82,28 +90,14 @@ export const HomePage: React.FC = () => {
         setError(
           itemsRes.reason instanceof Error
             ? itemsRes.reason.message
-            : "Sorotan barang belum bisa dimuat."
+            : "Gagal memuat sorotan barang."
         );
       }
 
       if (activitiesRes.status === "fulfilled") {
         setActivities(activitiesRes.value.slice(0, 3));
-      } else {
-        setActivityError(
-          activitiesRes.reason instanceof Error
-            ? activitiesRes.reason.message
-            : "Kegiatan belum bisa dimuat."
-        );
       }
-      if (storesRes.status === "fulfilled") {
-        setStores(storesRes.value.slice(0, 3));
-      } else {
-        setStoreError(
-          storesRes.reason instanceof Error
-            ? storesRes.reason.message
-            : "Daftar toko belum bisa dimuat."
-        );
-      }
+
       setLoading(false);
     };
 
@@ -111,355 +105,409 @@ export const HomePage: React.FC = () => {
     return () => {
       active = false;
     };
-  }, [selectedRegion?.id]);
-
-  useEffect(() => {
-    const receipt = receiptRef.current;
-    if (!receipt || window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-      return;
-    }
-
-    const animation = gsap.fromTo(
-      receipt,
-      { opacity: 0, y: -14, scaleY: 0.96, transformOrigin: "top center" },
-      { opacity: 1, y: 0, scaleY: 1, duration: 0.58, ease: "power2.out" }
-    );
-    return () => {
-      animation.kill();
-    };
   }, []);
 
   return (
-    <div className="home-page">
-      <section className="home-hero" aria-labelledby="home-title">
-        <div className="home-hero-copy">
-          <h1 id="home-title">
-            Barang layak pakai, kebaikan yang tercatat.
-          </h1>
-          <p>
-            Temukan barang pilihan dari warga. Setiap prosesnya dikurasi dengan
-            jujur dan hasil penjualannya mendukung kegiatan yang bisa kamu ikuti.
-          </p>
-          <div className="home-hero-actions">
-            <Link to="/katalog">
-              <i className="pi pi-shopping-bag" aria-hidden="true" />
-              <span>Lihat barang</span>
-            </Link>
-            <Link to="/donasi-barang" className="secondary">
-              <i className="pi pi-gift" aria-hidden="true" />
-              <span>Titip donasi</span>
-            </Link>
-          </div>
-          <div className="home-region-picker">
-            <RegionPicker
-              label="Pilih wilayah untuk melihat barang sekitar"
-              value={selectedRegion?.id || ""}
-              path={selectedRegion?.path}
-              onChange={(region, path) =>
-                setSelectedRegion(
-                  region ? { id: region.id, nama: region.nama, path } : null
-                )
-              }
-            />
-            {selectedRegion && (
-              <p className="text-xs text-slate-600">
-                Barang di sekitar: <strong>{selectedRegion.nama}</strong>
-              </p>
-            )}
+    <div className="space-y-10">
+      {/* Hero Nila + Sapaan Sunda + Pita Mega Mendung */}
+      <section className="on-dark overflow-hidden rounded-kartu-besar bg-nila text-putih">
+        <div className="px-6 py-8 sm:px-10 sm:py-12">
+          <div className="max-w-2xl space-y-4">
+            <p className="text-sm font-medium">
+              <span lang="su" className="font-semibold text-pucuk">
+                Wilujeng sumping
+              </span>{" "}
+              <span className="text-nila-muda">
+                (Selamat datang di Barokahiin)
+              </span>
+            </p>
+            <h1 className="font-display text-2xl font-bold leading-tight sm:text-4xl">
+              Barang yang kamu beli, kebaikan yang kita danai.
+            </h1>
+            <p className="text-sm leading-relaxed text-nila-muda sm:text-base">
+              Setiap barang layak dari donatur dikurasi kondisi dan harganya
+              secara jujur, dijual terbuka, dan seluruh hasilnya disalurkan
+              untuk mendanai kegiatan sosial di Jawa Barat dan sekitarnya.
+            </p>
+            <div className="flex flex-wrap items-center gap-3 pt-2">
+              <Link to="/katalog" className="btn-cta text-sm">
+                <i className="pi pi-shopping-bag text-sm" aria-hidden="true" />
+                <span>Jelajahi katalog</span>
+              </Link>
+              <Link
+                to="/donasi-barang"
+                className="inline-flex min-h-[48px] items-center gap-2 rounded-pil border border-putih px-5 py-2.5 text-sm font-semibold text-putih transition hover:bg-nila-tua"
+              >
+                <i className="pi pi-gift text-sm" aria-hidden="true" />
+                <span>Donasi barang</span>
+              </Link>
+            </div>
           </div>
         </div>
 
-        <aside
-          ref={receiptRef}
-          className="home-receipt"
-          aria-labelledby="receipt-title"
-        >
-          <div className="receipt-top">
-            <span className="receipt-seal" aria-hidden="true">
-              <i className="pi pi-check" />
-            </span>
-            <h2 id="receipt-title">Kuitansi kebaikan</h2>
-            <p>
-              Jejak pembelian dan dana kegiatan disajikan terbuka, bukan
-              disembunyikan di balik transaksi.
-            </p>
-          </div>
-          <hr className="receipt-rule" />
-          <dl className="receipt-lines">
-            <div>
-              <dt>Barang terkurasi</dt>
-              <dd>Dicatat</dd>
-            </div>
-            <div>
-              <dt>Biaya transaksi</dt>
-              <dd>Dirinci</dd>
-            </div>
-            <div>
-              <dt>Dana kegiatan</dt>
-              <dd>Dilaporkan</dd>
-            </div>
-          </dl>
-          <p className="receipt-note">
-            Rincian nilai mengikuti laporan transaksi dan kegiatan yang
-            diterbitkan.
-          </p>
-        </aside>
+        {/* Pita Mega Mendung dekoratif di sisi bawah hero */}
+        <div className="pita-mendung w-full" aria-hidden="true" />
       </section>
 
-      {categories.length > 0 && (
-        <section className="home-section" aria-labelledby="home-categories-title">
-          <div className="home-section-heading">
-            <div>
-              <h2 id="home-categories-title">Jelajahi kategori</h2>
-              <p>Pilih jenis barang yang sedang kamu cari.</p>
+      {/* Pesanan Menunggu Pembayaran */}
+      {pendingOrders.length > 0 && (
+        <section
+          aria-label="Pesanan menunggu pembayaran"
+          className="space-y-3 rounded-kartu-besar border border-kunyit bg-kunyit-muda p-4 sm:p-5"
+        >
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <i className="pi pi-clock text-kunyit-tua" aria-hidden="true" />
+              <h2 className="font-display text-base font-bold text-kunyit-tua sm:text-lg">
+                Menunggu pembayaran ({pendingOrders.length})
+              </h2>
             </div>
+            <Link
+              to="/pesanan"
+              className="text-xs font-semibold text-nila hover:underline"
+            >
+              Semua pesanan →
+            </Link>
           </div>
-          <div className="category-chip-list">
-            {categories.map((category) => (
-              <Link
-                className="category-chip"
-                key={category.uuid}
-                to={`/katalog?kategori=${encodeURIComponent(category.slug)}`}
+          <div className="grid gap-3 md:grid-cols-2">
+            {pendingOrders.map((order) => (
+              <div
+                key={order.uuid}
+                className="flex flex-wrap items-center justify-between gap-3 rounded-kartu border border-garis bg-putih p-3.5"
               >
-                {category.nama}
-              </Link>
+                <div className="min-w-0 space-y-1">
+                  <p className="font-mono text-xs font-bold text-muted">
+                    {order.kode}
+                  </p>
+                  <p className="truncate text-sm font-bold text-tinta">
+                    {order.items?.map((i) => i.judul).join(", ") ||
+                      "Pesanan Barokahiin"}
+                  </p>
+                  <div className="flex flex-wrap items-center gap-2 text-xs">
+                    {typeof order.total_idr === "number" && (
+                      <span className="tabular-nums font-bold text-nila">
+                        {formatRupiah(order.total_idr)}
+                      </span>
+                    )}
+                    {order.hold_expires_at && (
+                      <span className="text-muted">
+                        · Berlaku s.d. {formatDateId(order.hold_expires_at)}
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <Link
+                  to={`/pesanan/${encodeURIComponent(order.kode)}`}
+                  className="btn-cta text-xs"
+                >
+                  <span>Bayar sekarang</span>
+                  <i className="pi pi-arrow-right text-[11px]" aria-hidden="true" />
+                </Link>
+              </div>
             ))}
           </div>
         </section>
       )}
 
-      <section className="home-section" aria-labelledby="home-stores-title">
-        <div className="home-section-heading">
-          <div>
-            <h2 id="home-stores-title">
-              Toko di {selectedRegion?.nama || "wilayah pilot"}
+      {/* Rel Kategori Berwarna */}
+      {categories.length > 0 && (
+        <section aria-label="Jelajahi kategori" className="space-y-3">
+          <div className="flex items-center justify-between">
+            <h2 className="font-display text-lg font-bold text-tinta sm:text-xl">
+              Kategori pilihan
             </h2>
-            <p>Kenali koordinator lokal yang mengkurasi barang.</p>
+            <Link
+              to="/katalog"
+              className="text-sm font-semibold text-nila hover:underline"
+            >
+              Semua kategori →
+            </Link>
           </div>
-          <Link to="/toko">
-            <span>Lihat semua toko</span>
-            <i className="pi pi-arrow-up-right" aria-hidden="true" />
+
+          <div className="flex gap-3 overflow-x-auto pb-2">
+            {categories.map((cat) => {
+              const meta = getCategoryMeta(cat);
+              return (
+                <Link
+                  key={cat.uuid}
+                  to={`/katalog?kategori=${encodeURIComponent(cat.slug)}`}
+                  data-kategori={meta.slug}
+                  className="kategori-transition flex w-[96px] shrink-0 flex-col items-center justify-center gap-2 rounded-kartu border border-garis bg-putih p-3 text-center hover:border-aksen hover:bg-aksen-muda"
+                >
+                  <span className="flex h-10 w-10 items-center justify-center rounded-pil bg-aksen text-aksen-teks">
+                    <i className={`${meta.icon} text-base`} aria-hidden="true" />
+                  </span>
+                  <span className="line-clamp-2 text-xs font-semibold leading-tight text-tinta">
+                    {cat.nama}
+                  </span>
+                </Link>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
+      {/* Ringkasan Dampak */}
+      <section aria-label="Ringkasan dampak Barokahiin" className="space-y-3">
+        <div className="flex items-center justify-between">
+          <h2 className="font-display text-lg font-bold text-tinta sm:text-xl">
+            Ringkasan dampak
+          </h2>
+          <Link
+            to="/kegiatan"
+            className="inline-flex min-h-[40px] items-center gap-1.5 text-sm font-semibold text-teh-tua hover:underline"
+          >
+            <span>Lihat transparansi dana</span>
+            <i className="pi pi-arrow-right text-xs" aria-hidden="true" />
           </Link>
         </div>
-        {storeError ? (
-          <Message severity="error" text={storeError} className="w-full justify-start" />
-        ) : stores.filter((store) =>
-          selectedRegion
-            ? store.area_publik
-                .toLocaleLowerCase("id-ID")
-                .includes(selectedRegion.nama.toLocaleLowerCase("id-ID"))
-            : true
-        ).length ? (
-          <div className="store-strip">
-            {stores
-              .filter((store) =>
-                selectedRegion
-                  ? store.area_publik
-                      .toLocaleLowerCase("id-ID")
-                      .includes(selectedRegion.nama.toLocaleLowerCase("id-ID"))
-                  : true
-              )
-              .map((store) => (
-              <Link className="store-mini-card" to={`/toko/${store.slug}`} key={store.uuid}>
-                <strong>{store.nama}</strong>
-                <span>{store.area_publik}</span>
-                <small>
-                  {store.rating_count > 0 && store.rating_avg !== null
-                    ? `${store.rating_avg.toFixed(1)} · ${store.rating_count} ulasan`
-                    : "Toko baru"}
-                </small>
-              </Link>
-              ))}
+
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
+          <div className="rounded-kartu border border-garis bg-putih p-4">
+            <p className="text-xs font-medium text-muted">Dana terkumpul</p>
+            <p className="font-display tabular-nums mt-1 text-lg font-bold text-teh sm:text-xl">
+              {impact ? formatRupiah(impact.total_dana_kebaikan_idr) : "—"}
+            </p>
           </div>
-        ) : (
-          !loading && <p className="form-card">Belum ada toko aktif di wilayah ini.</p>
-        )}
+          <div className="rounded-kartu border border-garis bg-putih p-4">
+            <p className="text-xs font-medium text-muted">Barang terjual</p>
+            <p className="font-display tabular-nums mt-1 text-lg font-bold text-nila sm:text-xl">
+              {impact ? impact.total_barang_terjual : "—"}
+            </p>
+          </div>
+          <div className="rounded-kartu border border-garis bg-putih p-4">
+            <p className="text-xs font-medium text-muted">Barang tersedia</p>
+            <p className="font-display tabular-nums mt-1 text-lg font-bold text-tinta sm:text-xl">
+              {impact ? impact.total_barang_tersedia : "—"}
+            </p>
+          </div>
+          <div className="rounded-kartu border border-garis bg-putih p-4">
+            <p className="text-xs font-medium text-muted">Program terdanai</p>
+            <p className="font-display tabular-nums mt-1 text-lg font-bold text-tinta sm:text-xl">
+              {impact ? impact.total_program_terdanai : "—"}
+            </p>
+          </div>
+        </div>
       </section>
 
-      <section className="home-section" aria-labelledby="latest-items-title">
-        <div className="home-section-heading">
+      {/* Sorotan Barang */}
+      <section className="space-y-4">
+        <div className="flex items-center justify-between gap-3">
           <div>
-            <h2 id="latest-items-title">Barang terbaru</h2>
-            <p>Temukan barang yang sudah diperiksa dan dijelaskan apa adanya.</p>
+            <h2 className="font-display text-lg font-bold text-tinta sm:text-xl">
+              Baru dikurasi di Bandung Raya
+            </h2>
+            <p className="text-xs text-muted sm:text-sm">
+              Foto apa adanya, kekurangan dicatat jelas, harga ditetapkan
+              pengelola.
+            </p>
           </div>
-          <Link to="/katalog">
-            <span>Lihat semua</span>
-            <i className="pi pi-arrow-up-right" aria-hidden="true" />
+          <Link
+            to="/katalog"
+            className="inline-flex min-h-[44px] shrink-0 items-center gap-1.5 rounded-pil border border-garis bg-putih px-4 py-2 text-sm font-semibold text-nila hover:bg-nila-muda"
+          >
+            <span>Semua barang</span>
+            <i className="pi pi-arrow-right text-xs" aria-hidden="true" />
           </Link>
         </div>
 
         {loading ? (
-          <div className="home-item-grid" aria-label="Memuat barang terbaru">
-            {Array.from({ length: 6 }).map((_, index) => (
-              <Skeleton key={index} height="21rem" borderRadius="0.75rem" />
+          <div className="grid grid-cols-2 gap-3.5 lg:grid-cols-4">
+            {Array.from({ length: 8 }).map((_, idx) => (
+              <Skeleton key={idx} height="19rem" borderRadius="12px" />
             ))}
           </div>
         ) : error ? (
-          <Message
-            severity="error"
-            text={`${error} Buka katalog untuk mencoba lagi.`}
-            className="w-full justify-start"
-          />
-        ) : items.length ? (
-          <div className="home-item-grid">
+          <Message severity="error" text={error} className="w-full justify-start" />
+        ) : items.length === 0 ? (
+          <div className="rounded-kartu border border-garis bg-putih p-8 text-center">
+            <p className="text-sm font-semibold text-tinta">
+              Belum ada barang yang diterbitkan saat ini.
+            </p>
+            <p className="mt-1 text-xs text-muted">
+              Anda dapat menjadi donatur pertama dengan mengajukan donasi barang.
+            </p>
+            <Link to="/donasi-barang" className="btn-cta mt-4 text-sm">
+              Ajukan donasi barang
+            </Link>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 gap-3.5 lg:grid-cols-4">
             {items.map((item) => (
               <ItemCard key={item.uuid} item={item} />
             ))}
           </div>
-        ) : (
-          <div className="rounded-xl border border-dashed border-slate-400 bg-white p-7">
-            <h3 className="m-0 text-base font-bold text-slate-900">
-              Belum ada barang baru
-            </h3>
-            <p className="mb-4 mt-2 max-w-xl text-sm text-slate-600">
-              Katalog akan menampilkan barang setelah selesai dikurasi. Kamu
-              bisa kembali melihatnya nanti atau mengajukan donasi barang.
-            </p>
-            <Link to="/donasi-barang" className="home-text-link">
-              Ajukan donasi barang
-              <i className="pi pi-arrow-up-right" aria-hidden="true" />
-            </Link>
-          </div>
         )}
       </section>
 
-      <section className="home-section" aria-labelledby="impact-title">
-        <div className="home-section-heading">
-          <div>
-            <h2 id="impact-title">Kebaikan yang tercatat</h2>
-            <p>Ringkasan dari data publik Barokahiin.</p>
+      {/* Kuitansi Kebaikan (Receipt Interaktif) */}
+      <section className="grid grid-cols-1 items-center gap-6 rounded-kartu-besar border border-garis bg-putih p-5 sm:p-6 lg:grid-cols-12 lg:p-8">
+        <div className="min-w-0 space-y-3 lg:col-span-6">
+          <span className="inline-flex items-center gap-1.5 rounded-pil bg-teh-muda px-3 py-1 text-xs font-semibold text-teh-tua">
+            <i className="pi pi-check-circle text-[11px]" aria-hidden="true" />
+            <span>Transparansi setiap rupiah</span>
+          </span>
+          <h2 className="font-display text-xl font-bold text-tinta sm:text-2xl">
+            Ke mana perginya uang pembelianmu?
+          </h2>
+          <p className="text-sm leading-relaxed text-muted">
+            Ketuk setiap baris kuitansi di samping untuk melihat penjelasan alur
+            dana dari barang donasi hingga laporan kegiatan publik.
+          </p>
+          <div className="pt-1">
+            <Link
+              to="/cara-kerja"
+              className="inline-flex min-h-[44px] items-center gap-2 text-sm font-semibold text-nila hover:underline"
+            >
+              <span>Pelajari cara kerja selengkapnya</span>
+              <i className="pi pi-arrow-right text-xs" aria-hidden="true" />
+            </Link>
           </div>
-          <Link to="/kegiatan">
-            <span>Lihat laporan</span>
-            <i className="pi pi-arrow-up-right" aria-hidden="true" />
-          </Link>
         </div>
 
-        <div className="home-impact-grid">
-          {impact ? (
-            <>
-              <div className="home-impact-item">
-                <span>Dana terkumpul</span>
-                <strong>{formatRupiah(impact.total_dana_kebaikan_idr)}</strong>
-              </div>
-              <div className="home-impact-item">
-                <span>Barang terjual</span>
-                <strong>{impact.total_barang_terjual.toLocaleString("id-ID")}</strong>
-              </div>
-              <div className="home-impact-item">
-                <span>Barang tersedia</span>
-                <strong>{impact.total_barang_tersedia.toLocaleString("id-ID")}</strong>
-              </div>
-              <div className="home-impact-item">
-                <span>Kegiatan terdanai</span>
-                <strong>{impact.total_program_terdanai.toLocaleString("id-ID")}</strong>
-              </div>
-            </>
-          ) : (
-            <p className="home-impact-empty">
-              Ringkasan dampak belum tersedia. Lihat halaman kegiatan untuk
-              laporan terbaru.
-            </p>
-          )}
+        <div className="min-w-0 rounded-kartu border border-garis bg-kertas p-3.5 sm:p-5 lg:col-span-6">
+          <div className="mb-3 flex items-center justify-between border-b border-dashed border-garis-kuat pb-2.5">
+            <span className="font-mono text-xs font-semibold text-tinta">
+              CONTOH KUITANSI KEBAIKAN
+            </span>
+            <span className="rounded-pil bg-nila-muda px-2.5 py-0.5 text-[11px] font-semibold text-nila-tua">
+              Terbuka
+            </span>
+          </div>
+
+          <div className="divide-y divide-garis">
+            {RECEIPT_ROWS.map((row) => {
+              const isOpen = openReceiptId === row.id;
+              return (
+                <div key={row.id} className="py-2">
+                  <button
+                    type="button"
+                    aria-expanded={isOpen}
+                    aria-controls={row.id}
+                    onClick={() =>
+                      setOpenReceiptId(isOpen ? null : row.id)
+                    }
+                    className="flex min-h-[44px] w-full items-center justify-between gap-3 rounded-kontrol px-2 text-left hover:bg-putih"
+                  >
+                    <span className="flex items-center gap-2 text-sm font-medium text-tinta">
+                      <i
+                        className={`pi ${
+                          isOpen ? "pi-chevron-down" : "pi-chevron-right"
+                        } text-[11px] text-nila`}
+                        aria-hidden="true"
+                      />
+                      <span>{row.label}</span>
+                    </span>
+                    <span className="tabular-nums shrink-0 font-mono text-sm font-bold text-nila">
+                      {row.amount}
+                    </span>
+                  </button>
+                  {isOpen && (
+                    <p
+                      id={row.id}
+                      className="mt-1 rounded-kontrol bg-putih px-3 py-2 text-xs leading-relaxed text-muted"
+                    >
+                      {row.detail}
+                    </p>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="mt-3 flex items-center justify-between border-t border-dashed border-garis-kuat pt-2.5 text-xs">
+            <span>
+              <span lang="su" className="font-semibold text-nila">
+                Hatur nuhun
+              </span>{" "}
+              <span className="text-muted">(Terima kasih)</span>
+            </span>
+            <span className="font-semibold text-teh-tua">
+              Masuk laporan publik
+            </span>
+          </div>
         </div>
       </section>
 
-      <section className="home-section" aria-labelledby="how-title">
-        <div className="home-section-heading">
-          <div>
-            <h2 id="how-title">Dari barang menjadi manfaat</h2>
-            <p>Alur yang jelas, dari penyerahan sampai laporan kegiatan.</p>
+      {/* Kegiatan Berjalan */}
+      {activities.length > 0 && (
+        <section className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="font-display text-lg font-bold text-tinta sm:text-xl">
+                Kegiatan yang didanai
+              </h2>
+              <p className="text-xs text-muted sm:text-sm">
+                Pantau progres dana dan laporan penggunaannya secara terbuka.
+              </p>
+            </div>
+            <Link
+              to="/kegiatan"
+              className="inline-flex min-h-[44px] items-center gap-1.5 text-sm font-semibold text-nila hover:underline"
+            >
+              <span>Lihat semua</span>
+              <i className="pi pi-arrow-right text-xs" aria-hidden="true" />
+            </Link>
           </div>
-          <Link to="/cara-kerja">
-            <span>Cara kerja</span>
-            <i className="pi pi-arrow-up-right" aria-hidden="true" />
-          </Link>
-        </div>
-        <ol className="home-steps">
-          {STEPS.map((step, index) => (
-            <li className="home-step" key={step.title}>
-              <span className="home-step-number">{index + 1}</span>
-              <h3>{step.title}</h3>
-              <p>{step.description}</p>
-            </li>
-          ))}
-        </ol>
-      </section>
 
-      {activityError ? (
-        <section className="home-section" aria-labelledby="activities-title">
-          <div className="home-section-heading">
-            <div>
-              <h2 id="activities-title">Kegiatan yang didukung</h2>
-              <p>Laporan kegiatan belum dapat dimuat saat ini.</p>
-            </div>
-            <Link to="/kegiatan">
-              <span>Buka laporan</span>
-              <i className="pi pi-arrow-up-right" aria-hidden="true" />
-            </Link>
-          </div>
-          <Message
-            severity="error"
-            text={activityError}
-            className="w-full justify-start"
-          />
-        </section>
-      ) : activities.length > 0 ? (
-        <section className="home-section" aria-labelledby="activities-title">
-          <div className="home-section-heading">
-            <div>
-              <h2 id="activities-title">Kegiatan yang didukung</h2>
-              <p>Lihat tujuan, progres, dan catatan penggunaan dana.</p>
-            </div>
-            <Link to="/kegiatan">
-              <span>Semua kegiatan</span>
-              <i className="pi pi-arrow-up-right" aria-hidden="true" />
-            </Link>
-          </div>
-          <div className="home-activity-grid">
-            {activities.map((activity) => {
-              const progress =
-                activity.target_dana > 0
+          <div className="grid gap-4 md:grid-cols-3">
+            {activities.map((act) => {
+              const pct =
+                act.target_dana > 0
                   ? Math.min(
                       100,
                       Math.round(
-                        (activity.dana_terkumpul_rupiah /
-                          activity.target_dana) *
-                          100
+                        (act.dana_terkumpul_rupiah / act.target_dana) * 100
                       )
                     )
                   : 0;
               return (
                 <Link
-                  key={activity.uuid}
-                  to={`/kegiatan/${activity.slug}`}
-                  className="home-activity-card"
+                  key={act.uuid}
+                  to={`/kegiatan/${act.slug}`}
+                  className="flex flex-col justify-between rounded-kartu border border-garis bg-putih p-5 transition-colors hover:border-nila"
                 >
-                  <div>
-                    <Tag
-                      value={activity.status === "aktif" ? "Berjalan" : "Selesai"}
-                      icon={activity.status === "aktif" ? "pi pi-clock" : "pi pi-check"}
-                      severity={activity.status === "aktif" ? "success" : "secondary"}
-                      rounded
-                    />
-                    <h3>{activity.judul}</h3>
-                    <p>{activity.deskripsi}</p>
-                  </div>
-                  <div>
-                    <div className="home-activity-total">
-                      <strong>
-                        Terkumpul {formatRupiah(activity.dana_terkumpul_rupiah)}
-                      </strong>
-                      <span>{progress}% dari target</span>
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <Tag
+                        value={act.status === "aktif" ? "Aktif" : "Selesai"}
+                        severity={act.status === "aktif" ? "success" : "secondary"}
+                        rounded
+                        className="px-2.5 py-0.5 text-[11px]"
+                      />
+                      {act.periode && (
+                        <span className="text-xs text-muted">{act.periode}</span>
+                      )}
                     </div>
-                    <ProgressBar value={progress} showValue={false} className="mt-2 h-2" />
+                    <h3 className="text-base font-bold text-tinta">
+                      {act.judul}
+                    </h3>
+                    <p className="line-clamp-2 text-xs leading-relaxed text-muted">
+                      {act.deskripsi}
+                    </p>
+                  </div>
+
+                  <div className="mt-4 space-y-1.5">
+                    <div className="flex justify-between text-xs">
+                      <span className="tabular-nums font-semibold text-teh-tua">
+                        {formatRupiah(act.dana_terkumpul_rupiah)}
+                      </span>
+                      <span className="tabular-nums text-muted">
+                        Target {formatRupiah(act.target_dana)} ({pct}%)
+                      </span>
+                    </div>
+                    <ProgressBar value={pct} showValue={false} className="h-2" />
+                    <p className="tabular-nums text-[11px] text-muted">
+                      Dana terpakai:{" "}
+                      {formatRupiah(act.total_penggunaan_rupiah ?? 0)}
+                    </p>
                   </div>
                 </Link>
               );
             })}
           </div>
         </section>
-      ) : null}
+      )}
 
       <TrustPaymentBanner settings={settings} />
     </div>

@@ -41,6 +41,8 @@ export const AdministrativeRegionPicker: React.FC<
   const [error, setError] = useState<string | null>(null);
   const requestId = useRef(0);
   const lastEmittedValueKey = useRef<string | null>(null);
+  const onChangeRef = useRef(onChange);
+  onChangeRef.current = onChange;
   const valueKey = value.join("|");
   const provinces = levels[0];
 
@@ -80,8 +82,8 @@ export const AdministrativeRegionPicker: React.FC<
 
     const restoreSelection = async () => {
       if (!valueKey) {
-        setSelectedCodes([]);
-        setLevels([provinces]);
+        setSelectedCodes((prev) => (prev.length ? [] : prev));
+        setLevels((prev) => (prev.length > 1 ? [provinces] : prev));
         return;
       }
 
@@ -111,7 +113,7 @@ export const AdministrativeRegionPicker: React.FC<
         if (!active) return;
         setSelectedCodes(restoredCodes);
         setLevels(restoredLevels);
-        if (restoredCodes.length) onChange(restoredCodes, restoredNames);
+        if (restoredCodes.length) onChangeRef.current(restoredCodes, restoredNames);
       } catch (cause) {
         if (active) {
           setError(
@@ -129,7 +131,7 @@ export const AdministrativeRegionPicker: React.FC<
     return () => {
       active = false;
     };
-  }, [onChange, provinces, valueKey]);
+  }, [provinces, valueKey]);
 
   const handleChange = async (index: number, code: string) => {
     const currentOptions = levels[index] || [];
@@ -174,11 +176,11 @@ export const AdministrativeRegionPicker: React.FC<
 
   return (
     <fieldset className="region-picker space-y-3">
-      <legend className="text-sm font-semibold text-slate-800">{label}</legend>
+      <legend className="text-sm font-semibold text-tinta">{label}</legend>
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {levels.map((options, index) => (
           <label className="region-picker-field min-w-0" key={index}>
-            <span className="mb-1 block text-xs font-medium text-slate-600">
+            <span className="mb-1 block text-xs font-medium text-muted">
               {FIELD_LABELS[index]}
             </span>
             <Dropdown
@@ -211,7 +213,7 @@ export const AdministrativeRegionPicker: React.FC<
         ))}
       </div>
       {loading && (
-        <p className="text-xs text-slate-500" role="status">
+        <p className="text-xs text-muted" role="status">
           Memuat wilayah…
         </p>
       )}

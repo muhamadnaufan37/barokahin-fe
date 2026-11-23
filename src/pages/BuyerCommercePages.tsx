@@ -56,9 +56,9 @@ export const CartPage: React.FC = () => {
 
   if (!cart.length) {
     return (
-      <section className="mx-auto max-w-xl rounded-2xl border border-slate-200 bg-white p-8 text-center">
-        <h1 className="text-2xl font-bold text-slate-900">Keranjangmu kosong</h1>
-        <p className="mt-2 text-sm text-slate-600">
+      <section className="mx-auto max-w-xl rounded-kartu-besar border border-garis bg-putih p-8 text-center">
+        <h1 className="text-2xl font-bold text-tinta">Keranjangmu kosong</h1>
+        <p className="mt-2 text-sm text-muted">
           Barang tidak ditahan saat berada di keranjang. Penahanan baru dimulai
           setelah pesanan dikonfirmasi.
         </p>
@@ -72,13 +72,13 @@ export const CartPage: React.FC = () => {
   return (
     <div className="mx-auto max-w-4xl space-y-6">
       <header>
-        <p className="text-sm font-semibold text-indigo-700">
+        <p className="text-sm font-semibold text-nila">
           {cart.length} barang unik
         </p>
-        <h1 className="mt-1 text-2xl font-bold text-slate-900">Keranjang</h1>
+        <h1 className="mt-1 text-2xl font-bold text-tinta">Keranjang</h1>
       </header>
 
-      <p className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
+      <p className="rounded-kartu border border-kunyit bg-kunyit-muda p-4 text-sm text-kunyit-tua">
         Barang belum ditahan. Stok diperiksa lagi saat checkout dan hold
         dimulai setelah konfirmasi pesanan.
       </p>
@@ -86,15 +86,15 @@ export const CartPage: React.FC = () => {
       <div className="space-y-4">
         {groups.map(([store, items]) => (
           <section className="form-card" key={store}>
-            <h2 className="text-sm font-bold text-slate-700">{store}</h2>
-            <ul className="mt-3 divide-y divide-slate-100">
+            <h2 className="text-sm font-bold text-tinta">{store}</h2>
+            <ul className="mt-3 divide-y divide-garis">
               {items.map((item) => (
                 <li className="flex items-center justify-between gap-4 py-4" key={item.uuid}>
                   <div className="min-w-0">
-                    <Link className="font-semibold text-slate-900 hover:underline" to={`/barang/${item.slug}`}>
+                    <Link className="font-semibold text-tinta hover:underline" to={`/barang/${item.slug}`}>
                       {item.judul}
                     </Link>
-                    <p className="mt-1 text-sm text-slate-600">
+                    <p className="mt-1 text-sm text-muted">
                       {formatRupiah(item.harga_rupiah)}
                     </p>
                   </div>
@@ -117,7 +117,7 @@ export const CartPage: React.FC = () => {
           <span>Subtotal barang</span>
           <strong>{formatRupiah(total)}</strong>
         </div>
-        <p className="mt-2 text-xs text-slate-500">
+        <p className="mt-2 text-xs text-muted">
           Ongkir dan biaya kemas dihitung setelah kamu memilih cara serah.
           Pesanan dari toko berbeda dapat memiliki ongkir terpisah.
         </p>
@@ -345,7 +345,7 @@ export const CheckoutPage: React.FC = () => {
         },
         confirmKey.current
       );
-      const code = order.kode || order.uuid;
+      const code = order.kode || order.kode_pesanan || order.uuid;
       recordOrder(code);
       clearCart();
       navigate(`/pesanan/${encodeURIComponent(code)}`, {
@@ -386,8 +386,8 @@ export const CheckoutPage: React.FC = () => {
   return (
     <div className="mx-auto max-w-3xl space-y-6">
       <header>
-        <p className="text-sm font-semibold text-indigo-700">Checkout</p>
-        <h1 className="mt-1 text-2xl font-bold text-slate-900">
+        <p className="text-sm font-semibold text-nila">Checkout</p>
+        <h1 className="mt-1 text-2xl font-bold text-tinta">
           Periksa pesananmu
         </h1>
       </header>
@@ -397,13 +397,13 @@ export const CheckoutPage: React.FC = () => {
         <p className="form-card" role="status">Memeriksa profil dan alamat…</p>
       ) : missingProfile ? (
         <section className="form-card">
-          <h2 className="text-lg font-bold text-slate-900">
+          <h2 className="text-lg font-bold text-tinta">
             Lengkapi data sebelum checkout
           </h2>
-          <p className="mt-1 text-sm text-slate-600">
+          <p className="mt-1 text-sm text-muted">
             Barang belum ditahan selama kamu melengkapi data.
           </p>
-          <ul className="mt-3 list-inside list-disc text-sm text-slate-700">
+          <ul className="mt-3 list-inside list-disc text-sm text-tinta">
             {completeness?.missing.map((code) => (
               <li key={code}>{missingLabel(code)}</li>
             ))}
@@ -455,11 +455,11 @@ export const CheckoutPage: React.FC = () => {
                   }}
                   required
                 />
-                <Link className="mt-1 inline-block text-sm text-indigo-700 underline" to="/akun">
+                <Link className="mt-1 inline-block text-sm text-nila underline" to="/akun">
                   Kelola alamat
                 </Link>
                 {selectedAddressWarnings.length > 0 && (
-                  <div className="mt-3 space-y-3 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
+                  <div className="mt-3 space-y-3 rounded-kartu border border-kunyit bg-kunyit-muda p-4 text-sm text-kunyit-tua">
                     <p className="font-semibold">
                       Periksa catatan pada alamat ini sebelum melanjutkan
                     </p>
@@ -490,7 +490,7 @@ export const CheckoutPage: React.FC = () => {
                 )}
               </div>
             ) : (
-              <p className="rounded-lg bg-slate-50 p-3 text-sm text-slate-600">
+              <p className="rounded-lg bg-kertas p-3 text-sm text-muted">
                 Area dan alamat lengkap titik ambil ditampilkan sesuai aturan
                 pesanan setelah pembayaran.
               </p>
@@ -501,8 +501,8 @@ export const CheckoutPage: React.FC = () => {
           </section>
 
           <section className="form-card">
-            <h2 className="text-lg font-bold text-slate-900">Ringkasan barang</h2>
-            <ul className="mt-3 divide-y divide-slate-100">
+            <h2 className="text-lg font-bold text-tinta">Ringkasan barang</h2>
+            <ul className="mt-3 divide-y divide-garis">
               {cart.map((item) => (
                 <li className="flex justify-between gap-3 py-3 text-sm" key={item.uuid}>
                   <span>{item.judul}</span>
@@ -511,11 +511,11 @@ export const CheckoutPage: React.FC = () => {
               ))}
             </ul>
             {quote && (
-              <div className="mt-3 space-y-2 border-t border-slate-100 pt-4 text-sm">
+              <div className="mt-3 space-y-2 border-t border-garis pt-4 text-sm">
                 <p className="flex justify-between"><span>Subtotal</span><strong>{formatRupiah(quote.quote.subtotal_idr)}</strong></p>
                 <p className="flex justify-between"><span>Ongkir</span><strong>{formatRupiah(quote.quote.ongkir_idr)}</strong></p>
                 <p className="flex justify-between"><span>Biaya kemas</span><strong>{formatRupiah(quote.quote.packing_fee_idr)}</strong></p>
-                <div className="flex items-start gap-2 rounded-lg bg-emerald-50 p-3">
+                <div className="flex items-start gap-2 rounded-lg bg-teh-muda p-3">
                   <Checkbox
                     inputId="rounding"
                     checked={rounding}
@@ -530,14 +530,14 @@ export const CheckoutPage: React.FC = () => {
                       : "(opsional)"}
                   </label>
                 </div>
-                <p className="flex justify-between border-t border-slate-100 pt-3 text-base">
+                <p className="flex justify-between border-t border-garis pt-3 text-base">
                   <span>Total</span>
                   <strong>{formatRupiah(quote.quote.total_idr)}</strong>
                 </p>
               </div>
             )}
             {quote && (
-              <div className="mt-4 flex items-start gap-2 text-sm text-slate-700">
+              <div className="mt-4 flex items-start gap-2 text-sm text-tinta">
                 <Checkbox
                   inputId="confirm-order-details"
                   checked={confirmed}
@@ -619,8 +619,8 @@ export const OrdersPage: React.FC = () => {
   return (
     <section className="mx-auto max-w-3xl space-y-5">
       <header>
-        <h1 className="text-2xl font-bold text-slate-900">Pesanan saya</h1>
-        <p className="mt-1 text-sm text-slate-600">
+        <h1 className="text-2xl font-bold text-tinta">Pesanan saya</h1>
+        <p className="mt-1 text-sm text-muted">
           Riwayat yang dibuat pada perangkat ini.
         </p>
       </header>
@@ -630,17 +630,49 @@ export const OrdersPage: React.FC = () => {
         <p className="form-card">Belum ada pesanan tersimpan di perangkat ini.</p>
       )}
       <ul className="space-y-3">
-        {orders.map((order) => (
-          <li className="form-card flex flex-wrap items-center justify-between gap-3" key={order.uuid}>
-            <div>
-              <p className="font-semibold">{order.kode}</p>
-              <p className="text-sm text-slate-600">Status: {order.status}</p>
-            </div>
-            <Link className="secondary-action" to={`/pesanan/${encodeURIComponent(order.kode)}`}>
-              Lihat pesanan
-            </Link>
-          </li>
-        ))}
+        {orders.map((order) => {
+          const isPendingPay = order.status === "menunggu_bayar";
+          const itemTitles = order.items?.map((i) => i.judul).join(", ");
+          return (
+            <li
+              className="form-card flex flex-wrap items-center justify-between gap-4"
+              key={order.uuid}
+            >
+              <div className="min-w-0 space-y-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="font-mono text-sm font-bold text-tinta">
+                    {order.kode}
+                  </p>
+                  <span
+                    className={`rounded-pil px-2.5 py-0.5 text-[11px] font-semibold ${
+                      isPendingPay
+                        ? "bg-kunyit-muda text-kunyit-tua"
+                        : "bg-teh-muda text-teh-tua"
+                    }`}
+                  >
+                    {isPendingPay ? "Menunggu pembayaran" : order.status}
+                  </span>
+                </div>
+                {itemTitles && (
+                  <p className="truncate text-sm font-medium text-tinta">
+                    {itemTitles}
+                  </p>
+                )}
+                {typeof order.total_idr === "number" && (
+                  <p className="tabular-nums text-xs font-semibold text-nila">
+                    Total: {formatRupiah(order.total_idr)}
+                  </p>
+                )}
+              </div>
+              <Link
+                className={isPendingPay ? "btn-cta text-xs" : "secondary-action"}
+                to={`/pesanan/${encodeURIComponent(order.kode)}`}
+              >
+                {isPendingPay ? "Bayar sekarang →" : "Lihat pesanan"}
+              </Link>
+            </li>
+          );
+        })}
       </ul>
     </section>
   );
@@ -829,9 +861,12 @@ export const OrderPage: React.FC = () => {
 
   const isPendingPayment =
     !!order &&
-    ["menunggu_pembayaran", "menunggu pembayaran", "pending_payment"].includes(
-      order.status.toLowerCase()
-    );
+    [
+      "menunggu_bayar",
+      "menunggu_pembayaran",
+      "menunggu pembayaran",
+      "pending_payment",
+    ].includes(order.status.toLowerCase());
   const hasHold = !!order && "hold_expires_at" in order && !!order.hold_expires_at;
   const holdExpiresAt =
     order && "hold_expires_at" in order ? order.hold_expires_at : undefined;
@@ -956,8 +991,8 @@ export const OrderPage: React.FC = () => {
   return (
     <section className="mx-auto max-w-3xl space-y-5">
       <header>
-        <p className="text-sm font-semibold text-indigo-700">Pesanan</p>
-        <h1 className="mt-1 text-2xl font-bold text-slate-900">{code}</h1>
+        <p className="text-sm font-semibold text-nila">Pesanan</p>
+        <h1 className="mt-1 text-2xl font-bold text-tinta">{code}</h1>
       </header>
       {error && <p className="form-alert error" role="alert">{error}</p>}
       {notice && <p className="form-alert success" role="status">{notice}</p>}
@@ -965,10 +1000,10 @@ export const OrderPage: React.FC = () => {
       {order && (
         <>
           <div className="form-card">
-            <p className="text-sm text-slate-600">Status pesanan</p>
-            <p className="mt-1 text-xl font-bold text-slate-900">{order.status}</p>
+            <p className="text-sm text-muted">Status pesanan</p>
+            <p className="mt-1 text-xl font-bold text-tinta">{order.status}</p>
             {hasHold && (
-              <p className="mt-2 text-sm text-slate-600">
+              <p className="mt-2 text-sm text-muted">
                 Batas penahanan:{" "}
                 {secondsRemaining === 0
                   ? "Masa penahanan telah berakhir."
@@ -979,7 +1014,7 @@ export const OrderPage: React.FC = () => {
                       : ""}
               </p>
             )}
-            <Button className="mt-3 text-sm font-semibold text-indigo-700 underline" type="button" onClick={() => void loadOrder()}>
+            <Button className="mt-3 text-sm font-semibold text-nila underline" type="button" onClick={() => void loadOrder()}>
               Perbarui status
             </Button>
           </div>
@@ -1006,18 +1041,90 @@ export const OrderPage: React.FC = () => {
                 {busy ? "Menyiapkan pembayaran…" : "Buat instruksi pembayaran"}
               </Button>
               {payment && (
-                <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm">
-                  <p className="font-semibold">Instruksi pembayaran</p>
-                  <p className="mt-1">Metode: {payment.metode.toUpperCase()}</p>
-                  {payment.va_number && <p>Nomor virtual account: {payment.va_number}</p>}
-                  {payment.qris_url && <img className="mt-3 max-h-64" src={payment.qris_url} alt="Kode QRIS pembayaran" />}
-                  {payment.instructions?.map((instruction) => <p className="mt-1" key={instruction}>{instruction}</p>)}
+                <div className="space-y-2 rounded-kartu border border-teh bg-teh-muda p-4 text-sm text-tinta">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <p className="font-semibold text-teh-tua">
+                      Instruksi pembayaran
+                    </p>
+                    <span className="rounded-pil bg-putih px-2.5 py-0.5 text-xs font-semibold text-teh-tua">
+                      {payment.status}
+                    </span>
+                  </div>
+                  <div className="grid gap-1 text-xs sm:grid-cols-2">
+                    <p>
+                      <span className="text-muted">Metode:</span>{" "}
+                      <strong>{payment.metode.toUpperCase()}</strong>
+                      {payment.gateway ? ` (${payment.gateway})` : ""}
+                    </p>
+                    {payment.gateway_ref && (
+                      <p>
+                        <span className="text-muted">Referensi:</span>{" "}
+                        <strong className="font-mono">
+                          {payment.gateway_ref}
+                        </strong>
+                      </p>
+                    )}
+                    {typeof payment.jumlah_idr === "number" && (
+                      <p>
+                        <span className="text-muted">Nominal:</span>{" "}
+                        <strong className="tabular-nums text-nila">
+                          {formatRupiah(payment.jumlah_idr)}
+                        </strong>
+                      </p>
+                    )}
+                    {(payment.kedaluwarsa_pada || payment.expires_at) && (
+                      <p>
+                        <span className="text-muted">Batas bayar:</span>{" "}
+                        <strong>
+                          {new Date(
+                            payment.kedaluwarsa_pada || payment.expires_at || ""
+                          ).toLocaleString("id-ID")}
+                        </strong>
+                      </p>
+                    )}
+                  </div>
+                  {payment.va_number && (
+                    <p className="rounded-kontrol bg-putih px-3 py-2 font-mono text-sm font-bold text-nila">
+                      Nomor virtual account: {payment.va_number}
+                    </p>
+                  )}
+                  {payment.qris_url ? (
+                    <img
+                      className="mt-2 max-h-64 rounded-kontrol border border-garis bg-putih p-2"
+                      src={payment.qris_url}
+                      alt="Kode QRIS pembayaran"
+                    />
+                  ) : (
+                    payment.metode === "qris" &&
+                    !payment.payment_url && (
+                      <p className="rounded-kontrol border border-kunyit bg-kunyit-muda px-3 py-2 text-xs text-kunyit-tua">
+                        Gambar QRIS (<code>qris_url</code>) belum dikembalikan
+                        oleh server pada kanal{" "}
+                        <strong>{payment.gateway || "qris"}</strong>. Simpan
+                        kode referensi{" "}
+                        <strong className="font-mono">
+                          {payment.gateway_ref || "-"}
+                        </strong>{" "}
+                        dan tekan <strong>Perbarui status</strong> setelah
+                        pembayaran diproses.
+                      </p>
+                    )
+                  )}
+                  {payment.instructions?.map((instruction) => (
+                    <p className="mt-1 text-xs" key={instruction}>
+                      {instruction}
+                    </p>
+                  ))}
                   {payment.payment_url && (
-                    <a className="secondary-action mt-3" href={payment.payment_url} target="_blank" rel="noopener noreferrer">
+                    <a
+                      className="secondary-action mt-2"
+                      href={payment.payment_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
                       Buka halaman pembayaran
                     </a>
                   )}
-                  {payment.expires_at && <p className="mt-2">Batas pembayaran: {new Date(payment.expires_at).toLocaleString("id-ID")}</p>}
                 </div>
               )}
               <Button className="text-sm font-semibold text-red-700 underline" type="button" disabled={busy} onClick={() => void cancelOrder()}>
@@ -1030,7 +1137,7 @@ export const OrderPage: React.FC = () => {
             order.serah === "kirim" && (
               <div className="form-card space-y-3">
                 <h2 className="text-lg font-bold">Koreksi alamat pengiriman</h2>
-                <p className="text-sm text-slate-600">
+                <p className="text-sm text-muted">
                   Alamat hanya dapat diubah selama pesanan memenuhi syarat dan
                   tetap berada di zona ongkir yang sama.
                 </p>
@@ -1084,7 +1191,7 @@ export const OrderPage: React.FC = () => {
                   )}
                 </dl>
               </section>
-              <section className="mt-5 border-t border-slate-100 pt-4">
+              <section className="mt-5 border-t border-garis pt-4">
                 <h2 className="text-lg font-bold">Kuitansi Kebaikan</h2>
                 <dl className="mt-3 space-y-2 text-sm">
                   {Object.entries(receipt.kuitansi_kebaikan).map(

@@ -8,7 +8,6 @@ import { useStorefront } from "../context/StorefrontContext";
 import { publicApi } from "../services/publicApi";
 import { PublicActivity } from "../types";
 import { formatDateId, formatRupiah } from "../utils/format";
-import { setPageMetadata } from "../utils/seo";
 
 export const ActivitiesPage: React.FC = () => {
   const { impact } = useStorefront();
@@ -17,12 +16,7 @@ export const ActivitiesPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    setPageMetadata({
-      title: "Kegiatan & Transparansi Dana — Barokahiin",
-      description:
-        "Lihat kegiatan sosial dan keagamaan yang didanai serta laporan penggunaan dana Barokahiin.",
-      path: "/kegiatan",
-    });
+    document.title = "Kegiatan & Transparansi Dana — Barokahiin";
     let active = true;
 
     const load = async () => {
@@ -53,10 +47,10 @@ export const ActivitiesPage: React.FC = () => {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-2xl font-bold text-slate-900">
-          Kegiatan & Transparansi Dana
+        <h1 className="font-display text-2xl font-bold text-tinta">
+          Kegiatan & transparansi dana
         </h1>
-        <p className="mt-1 text-sm text-slate-600">
+        <p className="mt-1 text-sm text-muted">
           Setiap penjualan barang donasi tercatat dan disalurkan untuk
           kegiatan sosial/keagamaan secara terbuka.
         </p>
@@ -65,33 +59,29 @@ export const ActivitiesPage: React.FC = () => {
       {/* Ringkasan Dampak */}
       {impact && (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
-          <div className="rounded-2xl border border-brand-200 bg-brand-50 p-4">
-            <p className="text-xs font-medium text-brand-800">
-              Total Dana Terkumpul
+          <div className="rounded-kartu border border-teh bg-teh-muda p-4">
+            <p className="text-xs font-medium text-teh-tua">
+              Total dana terkumpul
             </p>
-            <p className="mt-1 text-lg font-bold text-brand-900 sm:text-xl">
+            <p className="font-display tabular-nums mt-1 text-lg font-bold text-teh-tua sm:text-xl">
               {formatRupiah(impact.total_dana_kebaikan_idr)}
             </p>
           </div>
-          <div className="rounded-2xl border border-slate-200 bg-white p-4">
-            <p className="text-xs font-medium text-slate-500">Barang Terjual</p>
-            <p className="mt-1 text-lg font-bold text-slate-900 sm:text-xl">
+          <div className="rounded-kartu border border-garis bg-putih p-4">
+            <p className="text-xs font-medium text-muted">Barang terjual</p>
+            <p className="font-display tabular-nums mt-1 text-lg font-bold text-nila sm:text-xl">
               {impact.total_barang_terjual}
             </p>
           </div>
-          <div className="rounded-2xl border border-slate-200 bg-white p-4">
-            <p className="text-xs font-medium text-slate-500">
-              Barang Tersedia
-            </p>
-            <p className="mt-1 text-lg font-bold text-slate-900 sm:text-xl">
+          <div className="rounded-kartu border border-garis bg-putih p-4">
+            <p className="text-xs font-medium text-muted">Barang tersedia</p>
+            <p className="font-display tabular-nums mt-1 text-lg font-bold text-tinta sm:text-xl">
               {impact.total_barang_tersedia}
             </p>
           </div>
-          <div className="rounded-2xl border border-slate-200 bg-white p-4">
-            <p className="text-xs font-medium text-slate-500">
-              Kegiatan Terdanai
-            </p>
-            <p className="mt-1 text-lg font-bold text-slate-900 sm:text-xl">
+          <div className="rounded-kartu border border-garis bg-putih p-4">
+            <p className="text-xs font-medium text-muted">Program terdanai</p>
+            <p className="font-display tabular-nums mt-1 text-lg font-bold text-tinta sm:text-xl">
               {impact.total_program_terdanai}
             </p>
           </div>
@@ -101,14 +91,14 @@ export const ActivitiesPage: React.FC = () => {
       {loading ? (
         <div className="grid gap-4 md:grid-cols-2">
           {Array.from({ length: 4 }).map((_, i) => (
-            <Skeleton key={i} height="13rem" borderRadius="1rem" />
+            <Skeleton key={i} height="13rem" borderRadius="12px" />
           ))}
         </div>
       ) : error ? (
         <Message severity="error" text={error} className="w-full justify-start" />
       ) : activities.length === 0 ? (
-        <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center">
-          <p className="text-sm font-semibold text-slate-700">
+        <div className="rounded-kartu border border-garis bg-putih p-8 text-center">
+          <p className="text-sm font-semibold text-tinta">
             Belum ada kegiatan yang diterbitkan saat ini.
           </p>
         </div>
@@ -128,7 +118,7 @@ export const ActivitiesPage: React.FC = () => {
               <Link
                 key={act.uuid}
                 to={`/kegiatan/${act.slug}`}
-                className="flex flex-col justify-between rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition hover:border-brand-500/50 hover:shadow-md"
+                className="flex flex-col justify-between rounded-kartu border border-garis bg-putih p-6 transition-colors hover:border-nila"
               >
                 <div className="space-y-2.5">
                   <div className="flex flex-wrap items-center justify-between gap-2">
@@ -140,51 +130,42 @@ export const ActivitiesPage: React.FC = () => {
                       className="px-2.5 py-0.5 text-xs"
                     />
 
-                    <span className="text-xs text-slate-500">
+                    <span className="text-xs text-muted">
                       {act.periode || formatDateId(act.diterbitkan_pada)}
                     </span>
                   </div>
 
-                  <h2 className="text-lg font-bold text-slate-900">
+                  <h2 className="font-display text-lg font-bold text-tinta">
                     {act.judul}
                   </h2>
-                  {(act.wilayah || act.penerima_manfaat_desc) && (
-                    <p className="text-xs font-medium text-slate-500">
-                      {[act.wilayah, act.penerima_manfaat_desc]
-                        .filter(Boolean)
-                        .join(" · ")}
-                    </p>
-                  )}
-                  <p className="line-clamp-3 text-sm leading-relaxed text-slate-600">
+                  <p className="line-clamp-3 text-sm leading-relaxed text-muted">
                     {act.deskripsi}
                   </p>
                 </div>
 
-                <div className="mt-5 space-y-2 border-t border-slate-100 pt-4">
+                <div className="mt-5 space-y-2 border-t border-garis pt-4">
                   <div className="flex items-baseline justify-between text-xs">
                     <span>
                       Terkumpul:{" "}
-                      <strong className="text-sm text-brand-700">
+                      <strong className="tabular-nums text-sm text-teh-tua">
                         {formatRupiah(act.dana_terkumpul_rupiah)}
                       </strong>
                     </span>
-                    <span className="text-slate-500">
+                    <span className="tabular-nums text-muted">
                       Target: {formatRupiah(act.target_dana)} ({pct}%)
                     </span>
                   </div>
 
                   <ProgressBar value={pct} showValue={false} className="h-2.5" />
 
-                  <div className="flex items-center justify-between text-xs text-slate-500">
-                    <span>
+                  <div className="flex items-center justify-between text-xs text-muted">
+                    <span className="tabular-nums">
                       Total digunakan:{" "}
-                      <strong className="text-slate-700">
-                        {act.total_penggunaan_rupiah === null
-                          ? "Belum dilaporkan"
-                          : formatRupiah(act.total_penggunaan_rupiah)}
+                      <strong className="text-tinta">
+                        {formatRupiah(act.total_penggunaan_rupiah ?? 0)}
                       </strong>
                     </span>
-                    <span className="font-semibold text-brand-700">
+                    <span className="font-semibold text-nila">
                       Lihat laporan →
                     </span>
                   </div>

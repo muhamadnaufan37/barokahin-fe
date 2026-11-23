@@ -1,4 +1,11 @@
 /** @type {import('tailwindcss').Config} */
+const token = (n) => `var(--${n})`;
+const hue = (n) => ({
+  DEFAULT: token(n),
+  tua: token(`${n}-tua`),
+  muda: token(`${n}-muda`),
+});
+
 export default {
   content: [
     "./index.html",
@@ -8,26 +15,48 @@ export default {
   theme: {
     extend: {
       colors: {
-        brand: {
-          50: "#e6e9f8",
-          100: "#d8def4",
-          200: "#b8c2ec",
-          500: "#4354a4",
-          600: "#1f2c7a",
-          700: "#141c52",
-          800: "#101744",
+        kertas: token("kertas"),
+        putih: token("putih"),
+        tinta: token("tinta"),
+        muted: token("muted"),
+        garis: {
+          DEFAULT: token("garis"),
+          kuat: token("garis-kuat"),
         },
-        urgent: {
-          50: "#fff7ed",
-          100: "#ffedd5",
-          500: "#f97316",
-          600: "#ea580c",
-          700: "#c2410c",
+        nila: hue("nila"),
+        kunyit: hue("kunyit"),
+        teh: hue("teh"),
+        bata: hue("bata"),
+        telang: hue("telang"),
+        langit: hue("langit"),
+        mawar: hue("mawar"),
+        tanah: hue("tanah"),
+        pucuk: token("pucuk"),
+        bahaya: {
+          DEFAULT: token("bahaya"),
+          muda: token("bahaya-muda"),
+        },
+        aksen: {
+          DEFAULT: token("aksen"),
+          teks: token("aksen-teks"),
+          muda: token("aksen-muda"),
+          tua: token("aksen-tua"),
         },
       },
+      borderRadius: {
+        kontrol: "var(--r-kontrol)",
+        kartu: "var(--r-kartu)",
+        "kartu-besar": "var(--r-kartu-besar)",
+        pop: "var(--r-pop)",
+        pil: "var(--r-pil)",
+      },
+      boxShadow: {
+        float: "var(--e-float)",
+        bar: "var(--e-bar)",
+      },
       fontFamily: {
-        sans: ['"Plus Jakarta Sans"', "system-ui", "sans-serif"],
-        display: ['"Bricolage Grotesque"', '"Plus Jakarta Sans"', "sans-serif"],
+        sans: ['"Plus Jakarta Sans"', "system-ui", "Segoe UI", "Roboto", "sans-serif"],
+        display: ['"Bricolage Grotesque"', '"Plus Jakarta Sans"', "system-ui", "sans-serif"],
       },
     },
   },

@@ -87,6 +87,13 @@ function createCartItem(item: PublicItem): CartItem {
   };
 }
 
+const UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function isValidOrderCode(code: string): boolean {
+  return Boolean(code) && !UUID_PATTERN.test(code.trim());
+}
+
 export const BuyerProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
@@ -97,7 +104,7 @@ export const BuyerProvider: React.FC<{ children: React.ReactNode }> = ({
     readStorage<string[]>(FAVORITES_STORAGE_KEY, [])
   );
   const [recentOrderCodes, setRecentOrderCodes] = useState<string[]>(() =>
-    readStorage<string[]>(ORDERS_STORAGE_KEY, [])
+    readStorage<string[]>(ORDERS_STORAGE_KEY, []).filter(isValidOrderCode)
   );
   const [addressWarningReviews, setAddressWarningReviews] = useState<
     Record<string, AddressWarningReview>
@@ -172,8 +179,9 @@ export const BuyerProvider: React.FC<{ children: React.ReactNode }> = ({
   }, []);
 
   const recordOrder = useCallback((code: string) => {
+    if (!isValidOrderCode(code)) return;
     setRecentOrderCodes((current) =>
-      [code, ...current.filter((entry) => entry !== code)].slice(0, 20)
+      [code, ...current.filter((entry) => entry !== code && isValidOrderCode(entry))].slice(0, 20)
     );
   }, []);
 
