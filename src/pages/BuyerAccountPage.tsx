@@ -6,10 +6,10 @@ import { Dropdown } from "primereact/dropdown";
 import { InputText } from "primereact/inputtext";
 import { Message } from "primereact/message";
 import { Skeleton } from "primereact/skeleton";
-import { RegionPicker } from "../components/RegionPicker";
+import { AdministrativeRegionPicker } from "../components/AdministrativeRegionPicker";
 import { useBuyer } from "../context/BuyerContext";
 import { ApiClientError, publicApi } from "../services/publicApi";
-import { BuyerAddress, BuyerProfileCompleteness, PublicRegion } from "../types";
+import { BuyerAddress, BuyerProfileCompleteness } from "../types";
 import { getAddressWarningMessages } from "../utils/format";
 
 const MISSING_LABELS: Record<string, string> = {
@@ -34,23 +34,32 @@ const emptyAddress = {
 };
 
 export const BuyerAccountPage: React.FC = () => {
-  const { token, signOut, setAddressWarningReview } = useBuyer();
+  const {
+    token,
+    signOut,
+    setAddressWarningReview,
+    profileCompleteness,
+    setProfileCompleteness,
+  } = useBuyer();
   const navigate = useNavigate();
   const [completeness, setCompleteness] =
-    useState<BuyerProfileCompleteness | null>(null);
+    useState<BuyerProfileCompleteness | null>(profileCompleteness);
   const [addresses, setAddresses] = useState<BuyerAddress[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [name, setName] = useState("");
-  const [regionId, setRegionId] = useState("");
+  const [profileRegionCodes, setProfileRegionCodes] = useState<string[]>([]);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [email, setEmail] = useState("");
   const [address, setAddress] = useState(emptyAddress);
-  const [addressRegion, setAddressRegion] = useState<PublicRegion | null>(null);
-  const [addressRegionComplete, setAddressRegionComplete] = useState(false);
+  const [addressRegionCodes, setAddressRegionCodes] = useState<string[]>([]);
+  const [editingAddressUuid, setEditingAddressUuid] = useState<string | null>(
+    null
+  );
   const [showAddressForm, setShowAddressForm] = useState(false);
+  const [qrInput, setQrInput] = useState("");
   const [addressWarnings, setAddressWarnings] = useState<string[]>([]);
   const [addressWarningCodes, setAddressWarningCodes] = useState<string[]>([]);
   const [addressWarningsConfirmed, setAddressWarningsConfirmed] =
@@ -122,11 +131,13 @@ export const BuyerAccountPage: React.FC = () => {
 
   const saveProfile = async (event: FormEvent) => {
     event.preventDefault();
+    const deepestCode =
+      profileRegionCodes[profileRegionCodes.length - 1] || "";
     if (name.trim().length < 3) {
       setError("Nama lengkap minimal 3 karakter.");
       return;
     }
-    if (!regionId) {
+    if (!deepestCode) {
       setError("Pilih wilayah tempat tinggal terlebih dahulu.");
       return;
     }
@@ -140,7 +151,9 @@ export const BuyerAccountPage: React.FC = () => {
     try {
       const updated = await publicApi.updateBuyerProfile(token, {
         nama_lengkap: name.trim(),
-        region_id: regionId,
+        ...(profileRegionCodes[3]
+          ? { village_code: profileRegionCodes[3] }
+          : { wilayah_code: deepestCode }),
         accept_terms: acceptedTerms,
         terms_version: "0.5",
       });
@@ -177,7 +190,14 @@ export const BuyerAccountPage: React.FC = () => {
     setError(null);
     setNotice(null);
     try {
-      await publicApi.requestBuyerEmailVerification(token, email.trim());
+      const res = await publicApi.requestBuyerEmailVerification(
+        token,
+        email.trim()
+      );
+      if (res.profile_completeness) {
+        setCompleteness(res.profile_completeness);
+        setProfileCompleteness(res.profile_completeness);
+      }
       setNotice("Tautan verifikasi dikirim. Buka email untuk menyelesaikan verifikasi.");
     } catch (cause) {
       setError(
@@ -188,13 +208,46 @@ export const BuyerAccountPage: React.FC = () => {
     }
   };
 
-  const createAddress = async (event: FormEvent) => {
+  const startEditAddress = (saved: BuyerAddress) => {
+    setError(null);
+    setNotice(null);
+    setEditingAddressUuid(saved.uuid);
+    setAddress({
+      penerima: saved.penerima || "",
+      kontak_penerima: saved.kontak_penerima || "",
+      region_id: saved.region_id || "",
+      kode_pos: saved.kode_pos || "",
+      jalan: saved.jalan || "",
+      rt_rw: saved.rt_rw || "",
+      patokan: saved.patokan || "",
+      jenis_tempat: saved.jenis_tempat || "rumah",
+    });
+    const codes = [
+      saved.province_code,
+      saved.regency_code,
+      saved.district_code,
+      saved.village_code,
+    ].filter((c): c is string => Boolean(c));
+    setAddressRegionCodes(codes);
+    setShowAddressForm(true);
+  };
+
+  const cancelAddressForm = () => {
+    setShowAddressForm(false);
+    setEditingAddressUuid(null);
+    setAddress(emptyAddress);
+    setAddressRegionCodes([]);
+  };
+
+  const saveAddress = async (event: FormEvent) => {
     event.preventDefault();
-    if (!addressRegion || !addressRegionComplete) {
+    const [provinceCode, regencyCode, districtCode, villageCode] =
+      addressRegionCodes;
+    if (!provinceCode || !regencyCode || !districtCode || !villageCode) {
       setError("Pilih wilayah alamat sampai tingkat kelurahan/desa.");
       return;
     }
-    if (addresses.length >= 5) {
+    if (!editingAddressUuid && addresses.length >= 5) {
       setError("Buku alamat maksimal berisi lima alamat.");
       return;
     }
@@ -202,30 +255,90 @@ export const BuyerAccountPage: React.FC = () => {
     setError(null);
     setNotice(null);
     try {
-      const created = await publicApi.createBuyerAddress(token, {
+      const payload = {
         ...address,
-        region_id: addressRegion.id,
-      });
-      setAddresses((current) => [...current, created]);
+        province_code: provinceCode,
+        regency_code: regencyCode,
+        district_code: districtCode,
+        village_code: villageCode,
+        is_default: editingAddressUuid
+          ? addresses.find((a) => a.uuid === editingAddressUuid)?.utama ??
+            false
+          : addresses.length === 0,
+      };
+      const saved = editingAddressUuid
+        ? await publicApi.updateBuyerAddress(
+            token,
+            editingAddressUuid,
+            payload
+          )
+        : await publicApi.createBuyerAddress(token, payload);
+
+      setAddresses((current) =>
+        editingAddressUuid
+          ? current.map((a) => (a.uuid === editingAddressUuid ? saved : a))
+          : [...current, saved]
+      );
+      if (saved.profile_completeness) {
+        setCompleteness(saved.profile_completeness);
+        setProfileCompleteness(saved.profile_completeness);
+      }
       setShowAddressForm(false);
+      setEditingAddressUuid(null);
       setAddress(emptyAddress);
-      setAddressRegion(null);
-      setAddressRegionComplete(false);
-      const warnings = created.warnings || [];
+      setAddressRegionCodes([]);
+      const warnings = saved.warnings || [];
       setAddressWarningCodes(warnings);
       setAddressWarnings(getAddressWarningMessages(warnings));
       setAddressWarningsConfirmed(warnings.length === 0);
-      setAddressWarningsUuid(created.uuid);
-      setAddressWarningReview(created.uuid, warnings, warnings.length === 0);
-      setNotice("Alamat tersimpan.");
+      setAddressWarningsUuid(saved.uuid);
+      setAddressWarningReview(saved.uuid, warnings, warnings.length === 0);
+      setNotice(
+        editingAddressUuid ? "Alamat diperbarui." : "Alamat tersimpan."
+      );
       await loadAccount();
     } catch (cause) {
       if (cause instanceof ApiClientError && cause.fields) {
         const detail = Object.values(cause.fields).flat().join(" ");
         setError(detail || cause.message);
       } else {
-        setError(cause instanceof Error ? cause.message : "Alamat gagal disimpan.");
+        setError(
+          cause instanceof Error ? cause.message : "Alamat gagal disimpan."
+        );
       }
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const setDefaultAddress = async (uuid: string) => {
+    if (!token) return;
+    setSaving(true);
+    setError(null);
+    setNotice(null);
+    try {
+      const updated = await publicApi.updateBuyerAddress(token, uuid, {
+        is_default: true,
+      });
+      setAddresses((current) =>
+        current.map((a) =>
+          a.uuid === uuid
+            ? { ...updated, utama: true, is_default: true }
+            : { ...a, utama: false, is_default: false }
+        )
+      );
+      if (updated.profile_completeness) {
+        setCompleteness(updated.profile_completeness);
+        setProfileCompleteness(updated.profile_completeness);
+      }
+      setNotice("Alamat utama diperbarui.");
+      await loadAccount();
+    } catch (cause) {
+      setError(
+        cause instanceof Error
+          ? cause.message
+          : "Alamat utama gagal diperbarui."
+      );
     } finally {
       setSaving(false);
     }
@@ -323,10 +436,10 @@ export const BuyerAccountPage: React.FC = () => {
                 />
               </label>
               <div className="sm:col-span-2">
-                <RegionPicker
-                  value={regionId}
+                <AdministrativeRegionPicker
+                  value={profileRegionCodes}
                   label="Wilayah tempat tinggal"
-                  onChange={(region) => setRegionId(region?.id || "")}
+                  onChange={(codes) => setProfileRegionCodes(codes)}
                 />
               </div>
               <div className="flex items-start gap-2.5 sm:col-span-2">
@@ -399,15 +512,20 @@ export const BuyerAccountPage: React.FC = () => {
                 icon="pi pi-plus"
                 outlined
                 disabled={addresses.length >= 5 || showAddressForm}
-                onClick={() => setShowAddressForm(true)}
+                onClick={() => {
+                  setEditingAddressUuid(null);
+                  setAddress(emptyAddress);
+                  setAddressRegionCodes([]);
+                  setShowAddressForm(true);
+                }}
               />
             </div>
 
             {addresses.length > 0 ? (
               <ul className="mt-4 divide-y divide-garis">
                 {addresses.map((saved) => (
-                  <li className="flex flex-wrap justify-between gap-3 py-4" key={saved.uuid}>
-                    <div className="text-sm">
+                  <li className="flex flex-wrap items-center justify-between gap-3 py-4" key={saved.uuid}>
+                    <div className="min-w-0 text-sm">
                       <p className="font-semibold text-tinta">
                         {saved.penerima} {saved.utama && <span>(Utama)</span>}
                       </p>
@@ -415,16 +533,38 @@ export const BuyerAccountPage: React.FC = () => {
                         {saved.jalan}, {saved.region_nama || "Wilayah tersimpan"}
                       </p>
                     </div>
-                    <Button
-                      type="button"
-                      label="Hapus"
-                      icon="pi pi-trash"
-                      severity="danger"
-                      text
-                      size="small"
-                      disabled={saving}
-                      onClick={() => void deleteAddress(saved.uuid)}
-                    />
+                    <div className="flex shrink-0 items-center gap-1.5">
+                      {!saved.utama && !saved.is_default && (
+                        <Button
+                          type="button"
+                          label="Jadikan utama"
+                          icon="pi pi-star"
+                          outlined
+                          size="small"
+                          disabled={saving}
+                          onClick={() => void setDefaultAddress(saved.uuid)}
+                        />
+                      )}
+                      <Button
+                        type="button"
+                        label="Edit"
+                        icon="pi pi-pencil"
+                        outlined
+                        size="small"
+                        disabled={saving}
+                        onClick={() => startEditAddress(saved)}
+                      />
+                      <Button
+                        type="button"
+                        label="Hapus"
+                        icon="pi pi-trash"
+                        severity="danger"
+                        text
+                        size="small"
+                        disabled={saving}
+                        onClick={() => void deleteAddress(saved.uuid)}
+                      />
+                    </div>
                   </li>
                 ))}
               </ul>
@@ -466,7 +606,10 @@ export const BuyerAccountPage: React.FC = () => {
             )}
 
             {showAddressForm && (
-              <form className="mt-5 grid gap-4 border-t border-garis pt-5 sm:grid-cols-2" onSubmit={createAddress}>
+              <form className="mt-5 grid gap-4 border-t border-garis pt-5 sm:grid-cols-2" onSubmit={saveAddress}>
+                <p className="text-sm font-bold text-tinta sm:col-span-2">
+                  {editingAddressUuid ? "Edit alamat" : "Tambah alamat baru"}
+                </p>
                 <label className="form-field">
                   <span>Nama penerima</span>
                   <InputText className="form-input" required value={address.penerima} onChange={(event) => setAddress({ ...address, penerima: event.target.value })} />
@@ -476,25 +619,17 @@ export const BuyerAccountPage: React.FC = () => {
                   <InputText className="form-input" required inputMode="tel" value={address.kontak_penerima} onChange={(event) => setAddress({ ...address, kontak_penerima: event.target.value })} />
                 </label>
                 <div className="sm:col-span-2">
-                  <RegionPicker
-                    value={addressRegion?.id || ""}
+                  <AdministrativeRegionPicker
+                    value={addressRegionCodes}
                     label="Wilayah alamat (pilih sampai kelurahan/desa)"
-                    onChange={(region, _path, _regionPath, isLeaf) => {
-                      setAddressRegion(region);
-                      setAddressRegionComplete(Boolean(isLeaf));
-                      if (region?.kode_pos) {
-                        setAddress((current) => ({
-                          ...current,
-                          kode_pos: region.kode_pos || current.kode_pos,
-                        }));
-                      }
-                    }}
+                    onChange={(codes) => setAddressRegionCodes(codes)}
                   />
-                  {addressRegion && !addressRegionComplete && (
-                    <p className="mt-1.5 text-xs font-medium text-kunyit-tua">
-                      Lanjutkan memilih wilayah sampai tingkat kelurahan/desa.
-                    </p>
-                  )}
+                  {addressRegionCodes.length > 0 &&
+                    addressRegionCodes.length < 4 && (
+                      <p className="mt-1.5 text-xs font-medium text-kunyit-tua">
+                        Lanjutkan memilih wilayah sampai tingkat kelurahan/desa.
+                      </p>
+                    )}
                 </div>
                 <label className="form-field">
                   <span>Kode pos</span>
@@ -531,7 +666,13 @@ export const BuyerAccountPage: React.FC = () => {
                 <div className="flex flex-wrap gap-2 sm:col-span-2">
                   <Button
                     type="submit"
-                    label={saving ? "Menyimpan…" : "Simpan alamat"}
+                    label={
+                      saving
+                        ? "Menyimpan…"
+                        : editingAddressUuid
+                          ? "Simpan perubahan"
+                          : "Simpan alamat"
+                    }
                     icon="pi pi-check"
                     loading={saving}
                     disabled={saving}
@@ -540,7 +681,7 @@ export const BuyerAccountPage: React.FC = () => {
                     type="button"
                     label="Batal"
                     outlined
-                    onClick={() => setShowAddressForm(false)}
+                    onClick={cancelAddressForm}
                   />
                 </div>
               </form>
@@ -548,6 +689,56 @@ export const BuyerAccountPage: React.FC = () => {
           </section>
         </>
       )}
+
+      {/* Setujui Login QR Perangkat Lain */}
+      <section className="form-card space-y-3">
+        <div>
+          <h2 className="text-base font-bold text-tinta">
+            Masuk di perangkat lain (QR)
+          </h2>
+          <p className="mt-1 text-xs text-muted">
+            Tempel token atau payload QR (`barokahiin://qr-login/...`) dari
+            layar desktop untuk menyetujui login.
+          </p>
+        </div>
+        <form
+          className="flex flex-col gap-2 sm:flex-row"
+          onSubmit={async (e) => {
+            e.preventDefault();
+            if (!qrInput.trim()) return;
+            setSaving(true);
+            setError(null);
+            setNotice(null);
+            try {
+              await publicApi.approveQrLogin(token, qrInput.trim());
+              setQrInput("");
+              setNotice("Login perangkat lain berhasil disetujui.");
+            } catch (cause) {
+              setError(
+                cause instanceof Error
+                  ? cause.message
+                  : "Gagal menyetujui QR login."
+              );
+            } finally {
+              setSaving(false);
+            }
+          }}
+        >
+          <InputText
+            value={qrInput}
+            onChange={(e) => setQrInput(e.target.value)}
+            placeholder="barokahiin://qr-login/..."
+            className="flex-1"
+          />
+          <Button
+            type="submit"
+            label="Setujui login"
+            icon="pi pi-qrcode"
+            outlined
+            disabled={saving || !qrInput.trim()}
+          />
+        </form>
+      </section>
 
       <div className="flex flex-wrap items-center gap-3">
         <Link className="secondary-action" to="/pesanan">

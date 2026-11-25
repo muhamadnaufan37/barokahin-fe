@@ -9,6 +9,7 @@ import {
 import { Button } from "primereact/button";
 import { Checkbox } from "primereact/checkbox";
 import { Dropdown } from "primereact/dropdown";
+import { InputText } from "primereact/inputtext";
 import { InputTextarea } from "primereact/inputtextarea";
 import { useBuyer } from "../context/BuyerContext";
 import {
@@ -18,6 +19,7 @@ import {
 } from "../services/publicApi";
 import {
   BuyerOrder,
+  BuyerOrderPickup,
   BuyerProfileCompleteness,
   CheckoutOrder,
   CheckoutValidation,
@@ -25,6 +27,7 @@ import {
   PaymentInstruction,
 } from "../types";
 import { formatRupiah, getAddressWarningMessages } from "../utils/format";
+import { payWithMidtrans, pollOrderUntilPaid } from "../utils/midtrans";
 
 function shouldLoadImpactReceipt(status: string): boolean {
   const normalized = status.toLowerCase();
@@ -169,6 +172,9 @@ export const CheckoutPage: React.FC = () => {
     useState<BuyerProfileCompleteness | null>(null);
   const [quote, setQuote] = useState<CheckoutValidation | null>(null);
   const [baseQuote, setBaseQuote] = useState<CheckoutValidation | null>(null);
+  const [voucherCode, setVoucherCode] = useState("");
+  const [appliedVoucher, setAppliedVoucher] = useState<string | null>(null);
+  const [voucherMessage, setVoucherMessage] = useState<string | null>(null);
   const [rounding, setRounding] = useState(false);
   const [confirmed, setConfirmed] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -204,7 +210,10 @@ export const CheckoutPage: React.FC = () => {
           setAddressUuid((current) =>
             current && savedAddresses.some((address) => address.uuid === current)
               ? current
-              : savedAddresses.find((address) => address.utama)?.uuid || ""
+              : savedAddresses.find((address) => address.utama || address.is_default)
+                  ?.uuid ||
+                savedAddresses[0]?.uuid ||
+                ""
           );
         }
       })
@@ -280,6 +289,7 @@ export const CheckoutPage: React.FC = () => {
         item_uuids: cart.map((item) => item.uuid),
         serah: handover,
         ...(handover === "kirim" ? { address_uuid: addressUuid } : {}),
+        ...(appliedVoucher ? { voucher_code: appliedVoucher } : {}),
         rounding_donation_idr: 0,
       });
       setQuote(result);
@@ -318,11 +328,56 @@ export const CheckoutPage: React.FC = () => {
         item_uuids: cart.map((item) => item.uuid),
         serah: handover,
         ...(handover === "kirim" ? { address_uuid: addressUuid } : {}),
+        ...(appliedVoucher ? { voucher_code: appliedVoucher } : {}),
         rounding_donation_idr: amount,
       });
       setQuote(result);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Total gagal diperbarui.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const applyVoucher = async () => {
+    const trimmed = voucherCode.trim().toUpperCase();
+    if (!trimmed) {
+      setAppliedVoucher(null);
+      setVoucherMessage(null);
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    setVoucherMessage(null);
+    try {
+      const preview = await publicApi.previewBuyerVoucher(token, {
+        voucher_code: trimmed,
+        item_uuids: cart.map((item) => item.uuid),
+        serah: handover,
+        ...(handover === "kirim" ? { address_uuid: addressUuid } : {}),
+      });
+      const disc = preview.voucher_discount_idr ?? preview.discount_idr ?? 0;
+      setAppliedVoucher(preview.voucher_code || trimmed);
+      setVoucherMessage(
+        preview.message ||
+          `Voucher ${preview.voucher_code || trimmed} diterapkan (-${formatRupiah(disc)}).`
+      );
+      if (quote) {
+        const refreshed = await publicApi.validateBuyerCheckout(token, {
+          item_uuids: cart.map((item) => item.uuid),
+          serah: handover,
+          ...(handover === "kirim" ? { address_uuid: addressUuid } : {}),
+          voucher_code: preview.voucher_code || trimmed,
+          rounding_donation_idr: rounding ? roundingAmount : 0,
+        });
+        setQuote(refreshed);
+        setBaseQuote(refreshed);
+      }
+    } catch (cause) {
+      setAppliedVoucher(null);
+      setError(
+        cause instanceof Error ? cause.message : "Voucher tidak dapat digunakan."
+      );
     } finally {
       setBusy(false);
     }
@@ -340,6 +395,7 @@ export const CheckoutPage: React.FC = () => {
           item_uuids: cart.map((item) => item.uuid),
           serah: handover,
           ...(handover === "kirim" ? { address_uuid: addressUuid } : {}),
+          ...(appliedVoucher ? { voucher_code: appliedVoucher } : {}),
           rounding_donation_idr: rounding ? roundingAmount : 0,
           data_confirmed: true,
         },
@@ -438,7 +494,10 @@ export const CheckoutPage: React.FC = () => {
                   value={addressUuid}
                   options={addresses.map((address) => ({
                     label: `${address.penerima} — ${address.jalan}, ${
-                      address.region_nama || address.region_id
+                      address.region_nama ||
+                      address.village_code ||
+                      address.region_id ||
+                      "Wilayah tersimpan"
                     }`,
                     value: address.uuid,
                   }))}
@@ -510,11 +569,53 @@ export const CheckoutPage: React.FC = () => {
                 </li>
               ))}
             </ul>
+            {/* Voucher (Opsional) */}
+            <div className="mt-4 space-y-2 border-t border-garis pt-4">
+              <label className="form-field">
+                <span>Kode voucher (opsional)</span>
+                <div className="flex gap-2">
+                  <InputText
+                    className="form-input flex-1"
+                    value={voucherCode}
+                    onChange={(e) => setVoucherCode(e.target.value.toUpperCase())}
+                    placeholder="Contoh: BERKAH25"
+                  />
+                  <Button
+                    type="button"
+                    outlined
+                    disabled={busy}
+                    onClick={() => void applyVoucher()}
+                  >
+                    Pakai
+                  </Button>
+                </div>
+              </label>
+              {voucherMessage && (
+                <p className="text-xs font-medium text-teh-tua">
+                  {voucherMessage}
+                </p>
+              )}
+            </div>
+
             {quote && (
               <div className="mt-3 space-y-2 border-t border-garis pt-4 text-sm">
                 <p className="flex justify-between"><span>Subtotal</span><strong>{formatRupiah(quote.quote.subtotal_idr)}</strong></p>
                 <p className="flex justify-between"><span>Ongkir</span><strong>{formatRupiah(quote.quote.ongkir_idr)}</strong></p>
                 <p className="flex justify-between"><span>Biaya kemas</span><strong>{formatRupiah(quote.quote.packing_fee_idr)}</strong></p>
+                {typeof quote.quote.voucher_discount_idr === "number" &&
+                  quote.quote.voucher_discount_idr > 0 && (
+                    <p className="flex justify-between text-teh-tua">
+                      <span>
+                        Diskon voucher{" "}
+                        {quote.quote.voucher_code
+                          ? `(${quote.quote.voucher_code})`
+                          : ""}
+                      </span>
+                      <strong>
+                        -{formatRupiah(quote.quote.voucher_discount_idr)}
+                      </strong>
+                    </p>
+                  )}
                 <div className="flex items-start gap-2 rounded-lg bg-teh-muda p-3">
                   <Checkbox
                     inputId="rounding"
@@ -687,9 +788,12 @@ export const OrderPage: React.FC = () => {
     (location.state as { order?: CheckoutOrder } | null)?.order || null
   );
   const [receipt, setReceipt] = useState<ImpactReceipt | null>(null);
+  const [pickupInfo, setPickupInfo] = useState<BuyerOrderPickup | null>(null);
   const [paymentMethod, setPaymentMethod] =
-    useState<PaymentInstruction["metode"]>("qris");
+    useState<PaymentInstruction["metode"]>("snap");
+  const [vaBank, setVaBank] = useState<string>("bca");
   const [payment, setPayment] = useState<PaymentInstruction | null>(null);
+  const [pollingPayment, setPollingPayment] = useState(false);
   const [savedAddresses, setSavedAddresses] = useState<
     Awaited<ReturnType<typeof publicApi.getBuyerAddresses>>
   >([]);
@@ -713,12 +817,23 @@ export const OrderPage: React.FC = () => {
     try {
       const data = await publicApi.getBuyerOrder(token, code);
       setOrder(data);
+      if (data.payments?.[0] && !payment) {
+        setPayment(data.payments[0]);
+      }
       if (shouldLoadImpactReceipt(data.status)) {
         const orderReceipt = await publicApi.getBuyerImpactReceipt(
           token,
           code
         );
         setReceipt(orderReceipt);
+      }
+      if (data.status.toLowerCase() === "dibayar" && data.serah === "ambil") {
+        publicApi
+          .getBuyerOrderPickup(token, code)
+          .then((info) => setPickupInfo(info))
+          .catch(() => {
+            // Alamat titik ambil belum tersedia
+          });
       }
     } catch (cause) {
       if (
@@ -871,21 +986,83 @@ export const OrderPage: React.FC = () => {
   const holdExpiresAt =
     order && "hold_expires_at" in order ? order.hold_expires_at : undefined;
 
+  const existingPayment =
+    payment ||
+    (order && "payments" in order ? order.payments?.[0] || null : null);
+  const holdExpired = secondsRemaining !== null && secondsRemaining <= 0;
+
+  const startPollingOrder = async () => {
+    if (!token) return;
+    setPollingPayment(true);
+    setNotice("Memverifikasi status pembayaran dengan server…");
+    const result = await pollOrderUntilPaid(token, code, 15);
+    setPollingPayment(false);
+    if (result.order) {
+      setOrder(result.order);
+    }
+    if (result.status === "dibayar") {
+      setNotice("Pembayaran berhasil dikonfirmasi! Kuitansi Kebaikan tersedia.");
+      await loadOrder();
+    } else if (result.status === "kedaluwarsa") {
+      setError("Batas waktu bayar habis. Barang kembali tersedia di katalog.");
+    } else {
+      setNotice(
+        "Pembayaran masih menunggu konfirmasi webhook. Tekan 'Perbarui status' beberapa saat lagi."
+      );
+    }
+  };
+
+  const openSnapCheckout = async (instruction: PaymentInstruction) => {
+    await payWithMidtrans(instruction, {
+      onSettled: () => void startPollingOrder(),
+      onPending: () => void startPollingOrder(),
+      onClosed: () =>
+        setNotice(
+          "Popup pembayaran ditutup. Pesanan masih ditahan — klik 'Lanjutkan pembayaran' sebelum batas waktu habis."
+        ),
+      onError: () =>
+        setError("Terjadi kendala saat membuka Midtrans Snap. Coba lagi."),
+    });
+  };
+
   const createPayment = async () => {
-    if (!order || !("uuid" in order)) return;
+    if (!order || !("uuid" in order) || holdExpired) return;
     setBusy(true);
     setError(null);
+    setNotice(null);
     try {
       paymentKey.current ||= createIdempotencyKey();
       const instruction = await publicApi.createBuyerPayment(
         token,
         order.uuid,
         paymentMethod,
+        paymentMethod === "va" ? vaBank : undefined,
         paymentKey.current
       );
       setPayment(instruction);
+      await openSnapCheckout(instruction);
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Instruksi pembayaran gagal dibuat.");
+      if (
+        cause instanceof ApiClientError &&
+        (cause.status === 409 || cause.code === "INVALID_ORDER_STATUS")
+      ) {
+        await loadOrder();
+        setError(cause.message);
+      } else if (
+        cause instanceof ApiClientError &&
+        (cause.status === 502 || cause.code === "PAYMENT_GATEWAY_ERROR")
+      ) {
+        paymentKey.current = null;
+        setError(
+          "Layanan pembayaran sedang sibuk, silakan coba beberapa saat lagi."
+        );
+      } else {
+        setError(
+          cause instanceof Error
+            ? cause.message
+            : "Instruksi pembayaran gagal dibuat."
+        );
+      }
     } finally {
       setBusy(false);
     }
@@ -1021,115 +1198,215 @@ export const OrderPage: React.FC = () => {
 
           {isPendingPayment && (
             <div className="form-card space-y-4">
-              <h2 className="text-lg font-bold">Pilih metode pembayaran</h2>
-              <label className="form-field">
-                <span>Metode</span>
-                <Dropdown
-                  className="form-input"
-                  value={paymentMethod}
-                  options={[
-                    { label: "QRIS", value: "qris" },
-                    { label: "Transfer virtual account", value: "va" },
-                    { label: "E-wallet", value: "ewallet" },
-                  ]}
-                  onChange={(event) =>
-                    setPaymentMethod(event.value as PaymentInstruction["metode"])
-                  }
-                />
-              </label>
-              <Button className="primary-action" type="button" disabled={busy} onClick={() => void createPayment()}>
-                {busy ? "Menyiapkan pembayaran…" : "Buat instruksi pembayaran"}
-              </Button>
-              {payment && (
+              <h2 className="font-display text-lg font-bold text-tinta">
+                Pilih metode pembayaran
+              </h2>
+
+              {holdExpired && (
+                <p className="rounded-kartu border border-bahaya bg-bahaya-muda p-3 text-xs font-medium text-bahaya">
+                  Batas waktu bayar telah habis. Klik &quot;Perbarui status&quot;
+                  untuk memeriksa status terbaru pesanan.
+                </p>
+              )}
+
+              {existingPayment?.snap_token && !holdExpired ? (
+                <div className="space-y-3">
+                  <button
+                    type="button"
+                    disabled={busy || pollingPayment}
+                    onClick={() => void openSnapCheckout(existingPayment)}
+                    className="btn-cta w-full text-sm"
+                  >
+                    <i className="pi pi-credit-card text-sm" aria-hidden="true" />
+                    <span>
+                      {pollingPayment
+                        ? "Memverifikasi pembayaran…"
+                        : "Lanjutkan pembayaran"}
+                    </span>
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <label className="form-field">
+                    <span>Metode</span>
+                    <Dropdown
+                      className="form-input"
+                      value={paymentMethod}
+                      options={[
+                        { label: "Midtrans Snap (Semua metode)", value: "snap" },
+                        { label: "QRIS", value: "qris" },
+                        { label: "Transfer virtual account", value: "va" },
+                        { label: "E-wallet", value: "ewallet" },
+                      ]}
+                      onChange={(event) =>
+                        setPaymentMethod(
+                          event.value as PaymentInstruction["metode"]
+                        )
+                      }
+                    />
+                  </label>
+
+                  {paymentMethod === "va" && (
+                    <label className="form-field">
+                      <span>Pilih bank virtual account</span>
+                      <Dropdown
+                        className="form-input"
+                        value={vaBank}
+                        options={[
+                          { label: "BCA Virtual Account", value: "bca" },
+                          { label: "BNI Virtual Account", value: "bni" },
+                          { label: "BRI Virtual Account", value: "bri" },
+                          { label: "Permata Virtual Account", value: "permata" },
+                          { label: "Mandiri Bill", value: "mandiri" },
+                        ]}
+                        onChange={(event) => setVaBank(String(event.value))}
+                      />
+                    </label>
+                  )}
+
+                  <button
+                    type="button"
+                    disabled={busy || holdExpired || pollingPayment}
+                    onClick={() => void createPayment()}
+                    className="btn-cta w-full text-sm"
+                  >
+                    <i
+                      className={`pi ${
+                        busy || pollingPayment
+                          ? "pi-spin pi-spinner"
+                          : "pi-credit-card"
+                      } text-sm`}
+                      aria-hidden="true"
+                    />
+                    <span>
+                      {busy
+                        ? "Menyiapkan pembayaran…"
+                        : pollingPayment
+                          ? "Memverifikasi pembayaran…"
+                          : "Bayar dengan Midtrans"}
+                    </span>
+                  </button>
+                </>
+              )}
+
+              {existingPayment && (
                 <div className="space-y-2 rounded-kartu border border-teh bg-teh-muda p-4 text-sm text-tinta">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <p className="font-semibold text-teh-tua">
                       Instruksi pembayaran
                     </p>
                     <span className="rounded-pil bg-putih px-2.5 py-0.5 text-xs font-semibold text-teh-tua">
-                      {payment.status}
+                      {existingPayment.status}
                     </span>
                   </div>
                   <div className="grid gap-1 text-xs sm:grid-cols-2">
                     <p>
                       <span className="text-muted">Metode:</span>{" "}
-                      <strong>{payment.metode.toUpperCase()}</strong>
-                      {payment.gateway ? ` (${payment.gateway})` : ""}
+                      <strong>{existingPayment.metode.toUpperCase()}</strong>
+                      {existingPayment.gateway
+                        ? ` (${existingPayment.gateway})`
+                        : ""}
                     </p>
-                    {payment.gateway_ref && (
+                    {existingPayment.gateway_ref && (
                       <p>
                         <span className="text-muted">Referensi:</span>{" "}
                         <strong className="font-mono">
-                          {payment.gateway_ref}
+                          {existingPayment.gateway_ref}
                         </strong>
                       </p>
                     )}
-                    {typeof payment.jumlah_idr === "number" && (
+                    {typeof existingPayment.jumlah_idr === "number" && (
                       <p>
                         <span className="text-muted">Nominal:</span>{" "}
                         <strong className="tabular-nums text-nila">
-                          {formatRupiah(payment.jumlah_idr)}
+                          {formatRupiah(existingPayment.jumlah_idr)}
                         </strong>
                       </p>
                     )}
-                    {(payment.kedaluwarsa_pada || payment.expires_at) && (
+                    {(existingPayment.kedaluwarsa_pada ||
+                      existingPayment.expires_at) && (
                       <p>
                         <span className="text-muted">Batas bayar:</span>{" "}
                         <strong>
                           {new Date(
-                            payment.kedaluwarsa_pada || payment.expires_at || ""
+                            existingPayment.kedaluwarsa_pada ||
+                              existingPayment.expires_at ||
+                              ""
                           ).toLocaleString("id-ID")}
                         </strong>
                       </p>
                     )}
                   </div>
-                  {payment.va_number && (
+                  {existingPayment.va_number && (
                     <p className="rounded-kontrol bg-putih px-3 py-2 font-mono text-sm font-bold text-nila">
-                      Nomor virtual account: {payment.va_number}
+                      Nomor virtual account: {existingPayment.va_number}
                     </p>
                   )}
-                  {payment.qris_url ? (
+                  {existingPayment.qris_url && (
                     <img
                       className="mt-2 max-h-64 rounded-kontrol border border-garis bg-putih p-2"
-                      src={payment.qris_url}
+                      src={existingPayment.qris_url}
                       alt="Kode QRIS pembayaran"
                     />
-                  ) : (
-                    payment.metode === "qris" &&
-                    !payment.payment_url && (
-                      <p className="rounded-kontrol border border-kunyit bg-kunyit-muda px-3 py-2 text-xs text-kunyit-tua">
-                        Gambar QRIS (<code>qris_url</code>) belum dikembalikan
-                        oleh server pada kanal{" "}
-                        <strong>{payment.gateway || "qris"}</strong>. Simpan
-                        kode referensi{" "}
-                        <strong className="font-mono">
-                          {payment.gateway_ref || "-"}
-                        </strong>{" "}
-                        dan tekan <strong>Perbarui status</strong> setelah
-                        pembayaran diproses.
-                      </p>
-                    )
                   )}
-                  {payment.instructions?.map((instruction) => (
+                  {existingPayment.instructions?.map((instruction) => (
                     <p className="mt-1 text-xs" key={instruction}>
                       {instruction}
                     </p>
                   ))}
-                  {payment.payment_url && (
+                  {(existingPayment.redirect_url ||
+                    existingPayment.payment_url) && (
                     <a
                       className="secondary-action mt-2"
-                      href={payment.payment_url}
+                      href={
+                        existingPayment.redirect_url ||
+                        existingPayment.payment_url
+                      }
                       target="_blank"
                       rel="noopener noreferrer"
                     >
-                      Buka halaman pembayaran
+                      Buka halaman pembayaran Midtrans
                     </a>
                   )}
                 </div>
               )}
-              <Button className="text-sm font-semibold text-red-700 underline" type="button" disabled={busy} onClick={() => void cancelOrder()}>
-                Batalkan sebelum membayar
-              </Button>
+              <Button
+                type="button"
+                label="Batalkan sebelum membayar"
+                severity="danger"
+                text
+                size="small"
+                disabled={busy}
+                onClick={() => void cancelOrder()}
+              />
+            </div>
+          )}
+
+          {pickupInfo && (
+            <div className="form-card space-y-2 border-teh bg-teh-muda">
+              <h2 className="font-display text-base font-bold text-teh-tua">
+                Alamat lengkap titik ambil
+              </h2>
+              {pickupInfo.alamat_lengkap && (
+                <p className="text-sm font-medium text-tinta">
+                  {pickupInfo.alamat_lengkap}
+                </p>
+              )}
+              {pickupInfo.patokan && (
+                <p className="text-xs text-muted">
+                  Patokan: {pickupInfo.patokan}
+                </p>
+              )}
+              {pickupInfo.jam_operasional && (
+                <p className="text-xs text-muted">
+                  Jam ambil: {pickupInfo.jam_operasional}
+                </p>
+              )}
+              {pickupInfo.kontak && (
+                <p className="text-xs text-muted">
+                  Kontak: {pickupInfo.kontak}
+                </p>
+              )}
             </div>
           )}
 

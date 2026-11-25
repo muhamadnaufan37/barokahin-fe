@@ -276,15 +276,64 @@ export interface BuyerAddress {
   uuid: string;
   penerima: string;
   kontak_penerima: string;
-  region_id: string;
+  region_id?: string;
   region_nama?: string;
+  region?: {
+    kode_resmi?: string;
+    level?: number | string;
+    nama?: string;
+    kode_pos?: string | null;
+  };
+  province_code?: string;
+  regency_code?: string;
+  district_code?: string;
+  village_code?: string;
   kode_pos: string;
   jalan: string;
   rt_rw: string;
   patokan: string;
   jenis_tempat: string;
+  is_default?: boolean;
   utama?: boolean;
   warnings?: string[];
+  profile_completeness?: BuyerProfileCompleteness;
+}
+
+export interface CreateBuyerAddressPayload {
+  penerima: string;
+  kontak_penerima: string;
+  province_code: string;
+  regency_code: string;
+  district_code: string;
+  village_code: string;
+  kode_pos: string;
+  jalan: string;
+  rt_rw: string;
+  patokan: string;
+  jenis_tempat: string;
+  is_default?: boolean;
+}
+
+export interface PublicVoucher {
+  uuid?: string;
+  code: string;
+  judul?: string;
+  deskripsi?: string;
+  discount_type?: "fixed" | "percent";
+  discount_value?: number;
+  min_subtotal_idr?: number;
+  max_discount_idr?: number | null;
+  valid_until?: string | null;
+}
+
+export interface VoucherPreviewResult {
+  valid?: boolean;
+  voucher_code: string;
+  discount_idr?: number;
+  voucher_discount_idr?: number;
+  subtotal_idr?: number;
+  total_idr?: number;
+  message?: string;
 }
 
 export interface CheckoutQuote {
@@ -292,6 +341,8 @@ export interface CheckoutQuote {
   ongkir_idr: number;
   packing_fee_idr: number;
   rounding_donation_idr: number;
+  voucher_code?: string | null;
+  voucher_discount_idr?: number;
   total_idr: number;
   zona: string;
 }
@@ -322,17 +373,53 @@ export interface CheckoutOrder {
 export interface PaymentInstruction {
   uuid?: string;
   status: string;
-  metode: "qris" | "va" | "ewallet";
+  metode: "snap" | "qris" | "va" | "ewallet";
+  bank?: string;
   gateway?: string;
   gateway_ref?: string;
   jumlah_idr?: number;
   kedaluwarsa_pada?: string;
   expires_at?: string;
+  snap_token?: string;
+  redirect_url?: string;
+  client_key?: string;
+  is_production?: boolean;
+  is_mock?: boolean;
+  payment_instructions?: {
+    enabled_payments?: string[];
+    snap_js_url?: string;
+  };
   payment_url?: string;
   qris_url?: string;
   qr_string?: string;
   va_number?: string;
   instructions?: string[];
+}
+
+export interface BuyerAuthResult {
+  token: string;
+  expires_in_seconds?: number;
+  user?: {
+    id?: number | string;
+    nama_lengkap?: string;
+    email?: string;
+    phone?: string;
+  };
+  profile_completeness?: BuyerProfileCompleteness;
+}
+
+export interface QrCreateResult {
+  qr_token: string;
+  qr_payload: string;
+  expires_in_seconds?: number;
+}
+
+export interface QrStatusResult {
+  status: "pending" | "approved" | "expired" | "consumed";
+  token?: string;
+  expires_in_seconds?: number;
+  user?: BuyerAuthResult["user"];
+  profile_completeness?: BuyerProfileCompleteness;
 }
 
 export interface BuyerOrder {
@@ -347,6 +434,15 @@ export interface BuyerOrder {
   serah?: "ambil" | "kirim";
   zona?: string;
   address_uuid?: string;
+  payments?: PaymentInstruction[];
+}
+
+export interface BuyerOrderPickup {
+  alamat_lengkap?: string;
+  patokan?: string;
+  kontak?: string;
+  jam_operasional?: string;
+  catatan?: string;
 }
 
 export interface BuyerReviewPayload {

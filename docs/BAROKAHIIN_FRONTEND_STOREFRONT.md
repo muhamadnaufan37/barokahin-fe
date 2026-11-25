@@ -6,6 +6,7 @@ Dokumen ini khusus untuk tim **Frontend Storefront Barokahiin** yang mengonsumsi
 
 Postman Collection siap impor: [barokahiin-v0.5.postman_collection.json](./postman/barokahiin-v0.5.postman_collection.json) (gunakan folder **1. Public** dan **2. Buyer**).
 Panduan khusus alur wilayah & alamat (kode `wilayah.id` tanpa `region_id`): [BAROKAHIIN_WILAYAH_FLOW.md](./BAROKAHIIN_WILAYAH_FLOW.md).
+Panduan khusus integrasi Payment Gateway Midtrans Snap: [BAROKAHIIN_PAYMENT_MIDTRANS.md](./BAROKAHIIN_PAYMENT_MIDTRANS.md).
 
 ---
 
@@ -104,21 +105,31 @@ Menjelajah dan menyimpan keranjang lokal boleh tanpa akun. **Membuat pesanan waj
 1. **Layar Web/Desktop** buat QR: `POST /barokahiin/public/auth/qr/create` → render `data.qr_payload` (`barokahiin://qr-login/{qr_token}`) sebagai QR Code (berlaku 3 menit).
 2. **Layar Web/Desktop** polling setiap 2–3 detik: `GET /barokahiin/public/auth/qr/{qr_token}/status`.
 3. **Perangkat Mobile (sudah login)** scan QR lalu kirim: `POST /barokahiin/buyer/auth/qr/approve` (Bearer token) dengan `{ "qr_token": "<qr_token atau qr_payload>" }`.
-4. Begitu disetujui, polling pada langkah 2 mengembalikan `{ status: "approved", token, user, profile_completeness }` sekali pakai (lalu otomatis ditandai `consumed`).
+4. Begitu disetujui, polling pada langkah 2 mengembalikan `{ status: "approved", token, expires_in_seconds, user, profile_completeness }` sekali pakai (lalu otomatis ditandai `consumed`).
+
+### E. Masa Berlaku Sesi & Refresh Token (Tanpa Login Ulang)
+- Semua endpoint login/registrasi pembeli mengembalikan `data.expires_in_seconds` dengan masa berlaku default **7 hari (`604800` detik / `BAROKAHIIN_JWT_TTL=10080` menit)**.
+- Untuk memperpanjang sesi secara senyap sebelum token habis (tanpa meminta pembeli login ulang), panggil:
+  - `POST /barokahiin/buyer/auth/refresh` (Bearer token) → mengembalikan `{ token, expires_in_seconds, user, profile_completeness }` baru.
 
 ---
 
 ## 4. Profil "Siap Beli" & Buku Alamat
 
 - **Cek kelengkapan**: `GET /barokahiin/buyer/me/profile/completeness?serah=kirim` (atau `ambil`)
-  Jika `ready === false`, tampilkan layar **"Lengkapi Data"** sesuai daftar kode pada `missing[]`:
-  - `PHONE_UNVERIFIED` → verifikasi OTP HP
-  - `EMAIL_UNVERIFIED` → `POST /barokahiin/buyer/me/email/verify`
-  - `NAME_MISSING` / `TERMS_NOT_ACCEPTED` / `REGION_MISSING` → `PATCH /barokahiin/buyer/me/profile` (`{ nama_lengkap, region_id, accept_terms: true, terms_version: "0.5" }`)
-  - `ADDRESS_MISSING` / `ADDRESS_INVALID` → `POST /barokahiin/buyer/me/addresses`
-- **Buku Alamat**: `GET /barokahiin/buyer/me/addresses`, `POST /barokahiin/buyer/me/addresses`, `DELETE /barokahiin/buyer/me/addresses/{uuid}`
-  - Maksimal 5 alamat.
-  - Periksa `data.warnings[]` (mis. `ADDRESS_LOOKS_INCOMPLETE`, `ADDRESS_SUSPICIOUS_TEXT`) untuk menampilkan konfirmasi sebelum lanjut.
+  - Status `profile_completeness` juga otomatis dikembalikan pada respons login, `POST /me/email/verify`, `POST /me/addresses`, dan `PATCH /me/addresses/{uuid}` — gunakan langsung untuk memperbarui state UI tanpa perlu request tambahan.
+  - Verifikasi email dan alamat tersimpan **persisten lintas sesi login** (`users.email_verified_at` & `barokahiin_buyer_profiles.email_verified_at` disinkronkan otomatis), sehingga pembeli yang sudah melengkapi data **tidak akan diminta melengkapi data atau verifikasi email lagi saat login ulang**.
+  - Jika `ready === false`, tampilkan layar **"Lengkapi Data"** sesuai daftar kode pada `missing[]`:
+    - `PHONE_UNVERIFIED` → verifikasi OTP HP
+    - `EMAIL_UNVERIFIED` → `POST /barokahiin/buyer/me/email/verify`
+    - `NAME_MISSING` / `TERMS_NOT_ACCEPTED` / `REGION_MISSING` → `PATCH /barokahiin/buyer/me/profile` (`{ nama_lengkap, village_code, accept_terms: true, terms_version: "0.5" }`)
+    - `ADDRESS_MISSING` / `ADDRESS_INVALID` → `POST /barokahiin/buyer/me/addresses`
+- **Buku Alamat**:
+  - `GET /barokahiin/buyer/me/addresses` (menyertakan `region.kode_resmi`, `level`, `nama`, `kode_pos`)
+  - `POST /barokahiin/buyer/me/addresses` (kirim `village_code` dari `/public/wilayah/*`; otomatis menyinkronkan `region_id` & `nama_lengkap` ke profil jika belum terisi)
+  - `PATCH /barokahiin/buyer/me/addresses/{uuid}` (edit sebagian field alamat, ubah `village_code`, atau set `is_default: true`)
+  - `DELETE /barokahiin/buyer/me/addresses/{uuid}`
+  - Maksimal 5 alamat. Periksa `data.warnings[]` (mis. `ADDRESS_LOOKS_INCOMPLETE`, `ADDRESS_SUSPICIOUS_TEXT`) untuk menampilkan konfirmasi sebelum lanjut.
 - **Anonimisasi Akun**: `DELETE /barokahiin/buyer/me` (menghapus data pribadi tanpa merusak catatan keuangan).
 
 ---

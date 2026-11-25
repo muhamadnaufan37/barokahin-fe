@@ -2,11 +2,14 @@ import {
   ApiErrorPayload,
   ApiResponse,
   BuyerAddress,
+  BuyerAuthResult,
   BuyerOrder,
+  BuyerOrderPickup,
   BuyerProfileCompleteness,
   BuyerReviewPayload,
   CheckoutOrder,
   CheckoutValidation,
+  CreateBuyerAddressPayload,
   DonationRequestPayload,
   DonationRequestResult,
   ImpactReceipt,
@@ -28,11 +31,15 @@ import {
   PublicSettings,
   PublicStore,
   PublicStaticPage,
+  PublicVoucher,
   PaymentInstruction,
   PurchaseRequestPayload,
   PurchaseRequestResult,
+  QrCreateResult,
+  QrStatusResult,
   ShippingEstimate,
   StaticPageKey,
+  VoucherPreviewResult,
 } from "../types";
 
 const RAW_BASE_URL = (
@@ -676,12 +683,16 @@ export const publicApi = {
 
   getShippingEstimate(
     slug: string,
-    regionId: string
+    wilayah: string | { village_code?: string; regency_code?: string; wilayah_code?: string; region?: string }
   ): Promise<ShippingEstimate> {
+    const query =
+      typeof wilayah === "string"
+        ? wilayah.includes(".")
+          ? { village_code: wilayah }
+          : { wilayah_code: wilayah }
+        : wilayah;
     return request<ShippingEstimate>(
-      `/items/${encodeURIComponent(slug)}/shipping-estimate${buildQueryString({
-        region: regionId,
-      })}`
+      `/items/${encodeURIComponent(slug)}/shipping-estimate${buildQueryString(query)}`
     );
   },
 
@@ -714,32 +725,84 @@ export const publicApi = {
     return request<PublicSettings>("/settings");
   },
 
-  requestBuyerOtp(phone: string): Promise<{ expires_in_seconds: number }> {
-    return request<{ expires_in_seconds: number }>(
-      "/auth/otp/request",
-      {
-        method: "POST",
-        headers: { "Idempotency-Key": createIdempotencyKey() },
-        body: JSON.stringify({ phone }),
-      }
-    );
+  registerBuyer(payload: {
+    nama_lengkap: string;
+    email: string;
+    phone: string;
+    password: string;
+  }): Promise<BuyerAuthResult> {
+    return request<BuyerAuthResult>("/auth/register", {
+      method: "POST",
+      headers: { "Idempotency-Key": createIdempotencyKey() },
+      body: JSON.stringify(payload),
+    });
+  },
+
+  loginBuyer(payload: {
+    identifier: string;
+    password: string;
+  }): Promise<BuyerAuthResult> {
+    return request<BuyerAuthResult>("/auth/login", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+  },
+
+  requestBuyerOtp(
+    target: string | { phone?: string; email?: string }
+  ): Promise<{
+    expires_in_seconds: number;
+    account_exists?: boolean;
+    requires_name?: boolean;
+  }> {
+    const body =
+      typeof target === "string" ? { phone: target } : target;
+    return request("/auth/otp/request", {
+      method: "POST",
+      headers: { "Idempotency-Key": createIdempotencyKey() },
+      body: JSON.stringify(body),
+    });
   },
 
   verifyBuyerOtp(
-    phone: string,
+    target: string | { phone?: string; email?: string },
     code: string,
-    namaLengkap: string
-  ): Promise<{
-    token: string;
-    profile_completeness: BuyerProfileCompleteness;
-  }> {
-    return request("/auth/otp/verify", {
+    namaLengkap?: string
+  ): Promise<BuyerAuthResult> {
+    const base =
+      typeof target === "string" ? { phone: target } : target;
+    return request<BuyerAuthResult>("/auth/otp/verify", {
       method: "POST",
       body: JSON.stringify({
-        phone,
+        ...base,
         code,
-        nama_lengkap: namaLengkap,
+        ...(namaLengkap ? { nama_lengkap: namaLengkap } : {}),
       }),
+    });
+  },
+
+  createQrLogin(): Promise<QrCreateResult> {
+    return request<QrCreateResult>("/auth/qr/create", {
+      method: "POST",
+    });
+  },
+
+  getQrLoginStatus(qrToken: string): Promise<QrStatusResult> {
+    return request<QrStatusResult>(
+      `/auth/qr/${encodeURIComponent(qrToken)}/status`
+    );
+  },
+
+  approveQrLogin(token: string, qrToken: string): Promise<unknown> {
+    return buyerRequest("/auth/qr/approve", token, {
+      method: "POST",
+      body: JSON.stringify({ qr_token: qrToken }),
+    });
+  },
+
+  refreshBuyerAuth(token: string): Promise<BuyerAuthResult> {
+    return buyerRequest<BuyerAuthResult>("/auth/refresh", token, {
+      method: "POST",
     });
   },
 
@@ -757,7 +820,9 @@ export const publicApi = {
     token: string,
     payload: {
       nama_lengkap: string;
-      region_id: string;
+      village_code?: string;
+      wilayah_code?: string;
+      region_id?: string;
       accept_terms: true;
       terms_version: "0.5";
     }
@@ -771,7 +836,7 @@ export const publicApi = {
   requestBuyerEmailVerification(
     token: string,
     email: string
-  ): Promise<unknown> {
+  ): Promise<{ profile_completeness?: BuyerProfileCompleteness }> {
     return buyerRequest("/me/email/verify", token, {
       method: "POST",
       body: JSON.stringify({ email }),
@@ -783,29 +848,47 @@ export const publicApi = {
       Array<BuyerAddress & { phone_penerima?: string; jalan_nomor?: string }> | { items: Array<BuyerAddress & { phone_penerima?: string; jalan_nomor?: string }> }
     >("/me/addresses", token);
     const list = Array.isArray(response) ? response : response.items;
-    return list.map((addr) => ({
-      ...addr,
-      kontak_penerima: addr.kontak_penerima || addr.phone_penerima || "",
-      jalan: addr.jalan || addr.jalan_nomor || "",
-    }));
+    return list.map((addr) => {
+      const villageCode = addr.village_code || addr.region?.kode_resmi;
+      const parts = villageCode ? villageCode.split(".") : [];
+      return {
+        ...addr,
+        kontak_penerima: addr.kontak_penerima || addr.phone_penerima || "",
+        jalan: addr.jalan || addr.jalan_nomor || "",
+        utama: addr.utama ?? addr.is_default ?? false,
+        region_nama: addr.region_nama || addr.region?.nama,
+        kode_pos: addr.kode_pos || addr.region?.kode_pos || "",
+        province_code: addr.province_code || parts[0],
+        regency_code:
+          addr.regency_code ||
+          (parts.length >= 2 ? `${parts[0]}.${parts[1]}` : undefined),
+        district_code:
+          addr.district_code ||
+          (parts.length >= 3
+            ? `${parts[0]}.${parts[1]}.${parts[2]}`
+            : undefined),
+        village_code: villageCode,
+      };
+    });
   },
 
   async createBuyerAddress(
     token: string,
-    payload: Omit<
-      BuyerAddress,
-      "uuid" | "warnings" | "region_nama" | "utama"
-    >
+    payload: CreateBuyerAddressPayload
   ): Promise<BuyerAddress> {
     const apiPayload = {
       penerima: payload.penerima,
       phone_penerima: payload.kontak_penerima,
-      region_id: payload.region_id,
+      province_code: payload.province_code,
+      regency_code: payload.regency_code,
+      district_code: payload.district_code,
+      village_code: payload.village_code,
       kode_pos: payload.kode_pos,
       jalan_nomor: payload.jalan,
       rt_rw: payload.rt_rw,
       patokan: payload.patokan,
       jenis_tempat: payload.jenis_tempat,
+      is_default: payload.is_default ?? true,
     };
     const created = await buyerRequest<
       BuyerAddress & { phone_penerima?: string; jalan_nomor?: string }
@@ -817,6 +900,51 @@ export const publicApi = {
       ...created,
       kontak_penerima: created.kontak_penerima || created.phone_penerima || payload.kontak_penerima,
       jalan: created.jalan || created.jalan_nomor || payload.jalan,
+    };
+  },
+
+  async updateBuyerAddress(
+    token: string,
+    uuid: string,
+    payload: Partial<CreateBuyerAddressPayload>
+  ): Promise<BuyerAddress> {
+    const apiPayload: Record<string, unknown> = {};
+    if (payload.penerima !== undefined) apiPayload.penerima = payload.penerima;
+    if (payload.kontak_penerima !== undefined)
+      apiPayload.phone_penerima = payload.kontak_penerima;
+    if (payload.province_code !== undefined)
+      apiPayload.province_code = payload.province_code;
+    if (payload.regency_code !== undefined)
+      apiPayload.regency_code = payload.regency_code;
+    if (payload.district_code !== undefined)
+      apiPayload.district_code = payload.district_code;
+    if (payload.village_code !== undefined)
+      apiPayload.village_code = payload.village_code;
+    if (payload.kode_pos !== undefined) apiPayload.kode_pos = payload.kode_pos;
+    if (payload.jalan !== undefined) apiPayload.jalan_nomor = payload.jalan;
+    if (payload.rt_rw !== undefined) apiPayload.rt_rw = payload.rt_rw;
+    if (payload.patokan !== undefined) apiPayload.patokan = payload.patokan;
+    if (payload.jenis_tempat !== undefined)
+      apiPayload.jenis_tempat = payload.jenis_tempat;
+    if (payload.is_default !== undefined)
+      apiPayload.is_default = payload.is_default;
+
+    const updated = await buyerRequest<
+      BuyerAddress & { phone_penerima?: string; jalan_nomor?: string }
+    >(`/me/addresses/${encodeURIComponent(uuid)}`, token, {
+      method: "PATCH",
+      body: JSON.stringify(apiPayload),
+    });
+    return {
+      ...updated,
+      kontak_penerima:
+        updated.kontak_penerima ||
+        updated.phone_penerima ||
+        payload.kontak_penerima ||
+        "",
+      jalan: updated.jalan || updated.jalan_nomor || payload.jalan || "",
+      utama: updated.utama ?? updated.is_default ?? payload.is_default ?? false,
+      region_nama: updated.region_nama || updated.region?.nama,
     };
   },
 
@@ -836,12 +964,33 @@ export const publicApi = {
     });
   },
 
+  async getPublicVouchers(): Promise<PublicVoucher[]> {
+    const res = await request<PublicVoucher[] | { items: PublicVoucher[] }>("/vouchers");
+    return Array.isArray(res) ? res : res.items || [];
+  },
+
+  previewBuyerVoucher(
+    token: string,
+    payload: {
+      voucher_code: string;
+      item_uuids: string[];
+      serah: "ambil" | "kirim";
+      address_uuid?: string;
+    }
+  ): Promise<VoucherPreviewResult> {
+    return buyerRequest<VoucherPreviewResult>("/vouchers/preview", token, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+  },
+
   validateBuyerCheckout(
     token: string,
     payload: {
       item_uuids: string[];
       serah: "ambil" | "kirim";
       address_uuid?: string;
+      voucher_code?: string;
       rounding_donation_idr: number;
     }
   ): Promise<CheckoutValidation> {
@@ -857,6 +1006,7 @@ export const publicApi = {
       item_uuids: string[];
       serah: "ambil" | "kirim";
       address_uuid?: string;
+      voucher_code?: string;
       rounding_donation_idr: number;
       data_confirmed: true;
     },
@@ -891,12 +1041,23 @@ export const publicApi = {
     token: string,
     orderUuid: string,
     method: PaymentInstruction["metode"],
+    bankOrKey?: string,
     idempotencyKey = createIdempotencyKey()
   ): Promise<PaymentInstruction> {
+    const isUuidKey =
+      bankOrKey &&
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+        bankOrKey
+      );
+    const bank = isUuidKey ? undefined : bankOrKey;
+    const key = isUuidKey ? bankOrKey : idempotencyKey;
     return buyerRequest(`/orders/${encodeURIComponent(orderUuid)}/pay`, token, {
       method: "POST",
-      headers: { "Idempotency-Key": idempotencyKey },
-      body: JSON.stringify({ metode: method }),
+      headers: { "Idempotency-Key": key },
+      body: JSON.stringify({
+        metode: method,
+        ...(bank ? { bank } : {}),
+      }),
     });
   },
 
@@ -931,6 +1092,13 @@ export const publicApi = {
       `/orders/${encodeURIComponent(code)}/impact-receipt`,
       token
     );
+  },
+
+  getBuyerOrderPickup(
+    token: string,
+    code: string
+  ): Promise<BuyerOrderPickup> {
+    return buyerRequest(`/orders/${encodeURIComponent(code)}/pickup`, token);
   },
 
   cancelBuyerOrder(token: string, uuid: string): Promise<unknown> {

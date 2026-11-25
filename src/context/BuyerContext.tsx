@@ -6,13 +6,14 @@ import React, {
   useMemo,
   useState,
 } from "react";
-import { PublicItem } from "../types";
+import { BuyerProfileCompleteness, PublicItem } from "../types";
 import { publicApi } from "../services/publicApi";
 
 const CART_STORAGE_KEY = "barokahiin:cart:v1";
 const FAVORITES_STORAGE_KEY = "barokahiin:favorites:v1";
 const REGION_STORAGE_KEY = "barokahiin:region:v1";
 const TOKEN_STORAGE_KEY = "barokahiin:buyer-token:v1";
+const TOKEN_EXPIRES_STORAGE_KEY = "barokahiin:buyer-token-exp:v1";
 const ORDERS_STORAGE_KEY = "barokahiin:orders:v1";
 const ADDRESS_WARNING_REVIEWS_KEY = "barokahiin:address-warning-reviews:v1";
 
@@ -54,10 +55,19 @@ interface BuyerContextValue {
     warnings: string[],
     confirmed: boolean
   ) => void;
+  profileCompleteness: BuyerProfileCompleteness | null;
+  setProfileCompleteness: (
+    completeness: BuyerProfileCompleteness | null
+  ) => void;
   verifyOtp: (
     phone: string,
     code: string,
-    name: string
+    name?: string
+  ) => Promise<void>;
+  completeAuth: (
+    newToken: string,
+    expiresInSeconds?: number,
+    completeness?: BuyerProfileCompleteness | null
   ) => Promise<void>;
   signOut: () => void;
 }
@@ -112,9 +122,25 @@ export const BuyerProvider: React.FC<{ children: React.ReactNode }> = ({
   const [selectedRegion, setRegion] = useState<SelectedRegion | null>(() =>
     readStorage<SelectedRegion | null>(REGION_STORAGE_KEY, null)
   );
-  const [token, setToken] = useState<string | null>(() =>
-    window.sessionStorage.getItem(TOKEN_STORAGE_KEY)
-  );
+  const [token, setToken] = useState<string | null>(() => {
+    const persisted = window.localStorage.getItem(TOKEN_STORAGE_KEY);
+    if (persisted) return persisted;
+    const legacySession = window.sessionStorage.getItem(TOKEN_STORAGE_KEY);
+    if (legacySession) {
+      window.localStorage.setItem(TOKEN_STORAGE_KEY, legacySession);
+      window.sessionStorage.removeItem(TOKEN_STORAGE_KEY);
+      return legacySession;
+    }
+    return null;
+  });
+  const [tokenExpiresAt, setTokenExpiresAt] = useState<number | null>(() => {
+    const raw = window.localStorage.getItem(TOKEN_EXPIRES_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = Number(raw);
+    return Number.isFinite(parsed) ? parsed : null;
+  });
+  const [profileCompleteness, setProfileCompleteness] =
+    useState<BuyerProfileCompleteness | null>(null);
 
   useEffect(() => {
     window.localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(cart));
@@ -200,22 +226,96 @@ export const BuyerProvider: React.FC<{ children: React.ReactNode }> = ({
     []
   );
 
-  const verifyOtp = useCallback(
-    async (phone: string, code: string, name: string) => {
-      const result = await publicApi.verifyBuyerOtp(phone, code, name);
-      window.sessionStorage.setItem(TOKEN_STORAGE_KEY, result.token);
-      setToken(result.token);
-      for (const item of cart) {
-        await publicApi.addBuyerCartItem(result.token, item.uuid);
+  const persistToken = useCallback(
+    (
+      newToken: string,
+      expiresInSeconds?: number,
+      completeness?: BuyerProfileCompleteness | null
+    ) => {
+      window.localStorage.setItem(TOKEN_STORAGE_KEY, newToken);
+      window.sessionStorage.removeItem(TOKEN_STORAGE_KEY);
+      setToken(newToken);
+      if (expiresInSeconds && expiresInSeconds > 0) {
+        const exp = Date.now() + expiresInSeconds * 1000;
+        window.localStorage.setItem(TOKEN_EXPIRES_STORAGE_KEY, String(exp));
+        setTokenExpiresAt(exp);
+      }
+      if (completeness !== undefined) {
+        setProfileCompleteness(completeness);
       }
     },
-    [cart]
+    []
+  );
+
+  const completeAuth = useCallback(
+    async (
+      newToken: string,
+      expiresInSeconds?: number,
+      completeness?: BuyerProfileCompleteness | null
+    ) => {
+      persistToken(newToken, expiresInSeconds, completeness);
+      for (const item of cart) {
+        await publicApi.addBuyerCartItem(newToken, item.uuid);
+      }
+    },
+    [cart, persistToken]
+  );
+
+  const verifyOtp = useCallback(
+    async (phone: string, code: string, name?: string) => {
+      const result = await publicApi.verifyBuyerOtp(phone, code, name);
+      await completeAuth(
+        result.token,
+        result.expires_in_seconds,
+        result.profile_completeness
+      );
+    },
+    [completeAuth]
   );
 
   const signOut = useCallback(() => {
+    window.localStorage.removeItem(TOKEN_STORAGE_KEY);
+    window.localStorage.removeItem(TOKEN_EXPIRES_STORAGE_KEY);
     window.sessionStorage.removeItem(TOKEN_STORAGE_KEY);
     setToken(null);
+    setTokenExpiresAt(null);
+    setProfileCompleteness(null);
   }, []);
+
+  useEffect(() => {
+    if (!token) return;
+    const REFRESH_WINDOW_MS = 24 * 60 * 60 * 1000;
+    const shouldRefresh =
+      !tokenExpiresAt || tokenExpiresAt - Date.now() < REFRESH_WINDOW_MS;
+    if (!shouldRefresh) return;
+
+    let cancelled = false;
+    publicApi
+      .refreshBuyerAuth(token)
+      .then((res) => {
+        if (cancelled) return;
+        persistToken(
+          res.token,
+          res.expires_in_seconds,
+          res.profile_completeness
+        );
+      })
+      .catch((cause) => {
+        if (cancelled) return;
+        if (
+          cause &&
+          typeof cause === "object" &&
+          "status" in cause &&
+          cause.status === 401
+        ) {
+          signOut();
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [token, tokenExpiresAt, persistToken, signOut]);
 
   const value = useMemo(
     () => ({
@@ -232,7 +332,10 @@ export const BuyerProvider: React.FC<{ children: React.ReactNode }> = ({
       recordOrder,
       setSelectedRegion,
       setAddressWarningReview,
+      profileCompleteness,
+      setProfileCompleteness,
       verifyOtp,
+      completeAuth,
       signOut,
     }),
     [
@@ -249,7 +352,9 @@ export const BuyerProvider: React.FC<{ children: React.ReactNode }> = ({
       recordOrder,
       setSelectedRegion,
       setAddressWarningReview,
+      profileCompleteness,
       verifyOtp,
+      completeAuth,
       signOut,
     ]
   );
