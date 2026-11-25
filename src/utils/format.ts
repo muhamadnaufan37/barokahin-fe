@@ -68,6 +68,132 @@ export const ITEM_STATUS_META: Record<
   },
 };
 
+export interface OrderStatusMeta {
+  label: string;
+  icon: string;
+  badgeClass: string;
+}
+
+const ORDER_STATUS_META: Record<string, OrderStatusMeta> = {
+  menunggu_bayar: {
+    label: "Menunggu pembayaran",
+    icon: "pi pi-clock",
+    badgeClass: "bg-kunyit-muda text-kunyit-tua border-kunyit",
+  },
+  menunggu_pembayaran: {
+    label: "Menunggu pembayaran",
+    icon: "pi pi-clock",
+    badgeClass: "bg-kunyit-muda text-kunyit-tua border-kunyit",
+  },
+  pending_payment: {
+    label: "Menunggu pembayaran",
+    icon: "pi pi-clock",
+    badgeClass: "bg-kunyit-muda text-kunyit-tua border-kunyit",
+  },
+  dibayar: {
+    label: "Sudah dibayar",
+    icon: "pi pi-check-circle",
+    badgeClass: "bg-langit-muda text-langit-tua border-langit",
+  },
+  disiapkan: {
+    label: "Disiapkan",
+    icon: "pi pi-box",
+    badgeClass: "bg-telang-muda text-telang-tua border-telang",
+  },
+  dikemas: {
+    label: "Dikemas",
+    icon: "pi pi-box",
+    badgeClass: "bg-telang-muda text-telang-tua border-telang",
+  },
+  diproses: {
+    label: "Diproses",
+    icon: "pi pi-box",
+    badgeClass: "bg-telang-muda text-telang-tua border-telang",
+  },
+  siap_ambil: {
+    label: "Siap diambil",
+    icon: "pi pi-map-marker",
+    badgeClass: "bg-telang-muda text-telang-tua border-telang",
+  },
+  siap_diambil: {
+    label: "Siap diambil",
+    icon: "pi pi-map-marker",
+    badgeClass: "bg-telang-muda text-telang-tua border-telang",
+  },
+  dikirim: {
+    label: "Dalam pengiriman",
+    icon: "pi pi-truck",
+    badgeClass: "bg-nila-muda text-nila border-nila",
+  },
+  dalam_pengiriman: {
+    label: "Dalam pengiriman",
+    icon: "pi pi-truck",
+    badgeClass: "bg-nila-muda text-nila border-nila",
+  },
+  diterima: {
+    label: "Diterima",
+    icon: "pi pi-check-square",
+    badgeClass: "bg-teh-muda text-teh-tua border-teh",
+  },
+  selesai: {
+    label: "Selesai",
+    icon: "pi pi-verified",
+    badgeClass: "bg-teh-muda text-teh-tua border-teh",
+  },
+  dibatalkan: {
+    label: "Dibatalkan",
+    icon: "pi pi-times-circle",
+    badgeClass: "bg-bata-muda text-bata-tua border-bata",
+  },
+  batal: {
+    label: "Dibatalkan",
+    icon: "pi pi-times-circle",
+    badgeClass: "bg-bata-muda text-bata-tua border-bata",
+  },
+  kedaluwarsa: {
+    label: "Kedaluwarsa",
+    icon: "pi pi-exclamation-circle",
+    badgeClass: "bg-bahaya-muda text-bahaya border-bahaya",
+  },
+  kadaluarsa: {
+    label: "Kedaluwarsa",
+    icon: "pi pi-exclamation-circle",
+    badgeClass: "bg-bahaya-muda text-bahaya border-bahaya",
+  },
+  expired: {
+    label: "Kedaluwarsa",
+    icon: "pi pi-exclamation-circle",
+    badgeClass: "bg-bahaya-muda text-bahaya border-bahaya",
+  },
+  komplain: {
+    label: "Dalam komplain",
+    icon: "pi pi-flag",
+    badgeClass: "bg-bata-muda text-bata-tua border-bata",
+  },
+  dispute: {
+    label: "Dalam komplain",
+    icon: "pi pi-flag",
+    badgeClass: "bg-bata-muda text-bata-tua border-bata",
+  },
+};
+
+export function getOrderStatusMeta(
+  status: string | null | undefined
+): OrderStatusMeta {
+  const normalized = (status || "")
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, "_");
+  if (ORDER_STATUS_META[normalized]) {
+    return ORDER_STATUS_META[normalized];
+  }
+  return {
+    label: status ? status.replace(/_/g, " ") : "Status tidak diketahui",
+    icon: "pi pi-info-circle",
+    badgeClass: "bg-garis text-tinta border-garis-kuat",
+  };
+}
+
 export function normalizeWhatsAppNumber(
   rawPhone: string | null | undefined
 ): string {

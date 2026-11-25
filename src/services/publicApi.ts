@@ -1087,6 +1087,33 @@ export const publicApi = {
     };
   },
 
+  async syncBuyerOrderPayment(
+    token: string,
+    uuid: string
+  ): Promise<BuyerOrder> {
+    const raw = await buyerRequest<
+      Omit<BuyerOrder, "items"> & {
+        kode_pesanan?: string;
+        items?: Array<{
+          judul?: string;
+          judul_snapshot?: string;
+          price_idr?: number;
+          harga_idr?: number;
+        }>;
+      }
+    >(`/orders/${encodeURIComponent(uuid)}/sync-payment`, token, {
+      method: "POST",
+    });
+    return {
+      ...raw,
+      kode: raw.kode || raw.kode_pesanan || "",
+      items: raw.items?.map((item) => ({
+        judul: item.judul || item.judul_snapshot || "Barang",
+        price_idr: item.price_idr ?? item.harga_idr ?? 0,
+      })),
+    };
+  },
+
   getBuyerImpactReceipt(token: string, code: string): Promise<ImpactReceipt> {
     return buyerRequest(
       `/orders/${encodeURIComponent(code)}/impact-receipt`,

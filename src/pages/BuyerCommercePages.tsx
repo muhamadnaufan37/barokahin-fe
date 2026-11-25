@@ -26,7 +26,11 @@ import {
   ImpactReceipt,
   PaymentInstruction,
 } from "../types";
-import { formatRupiah, getAddressWarningMessages } from "../utils/format";
+import {
+  formatRupiah,
+  getAddressWarningMessages,
+  getOrderStatusMeta,
+} from "../utils/format";
 import { payWithMidtrans, pollOrderUntilPaid } from "../utils/midtrans";
 
 function shouldLoadImpactReceipt(status: string): boolean {
@@ -102,12 +106,14 @@ export const CartPage: React.FC = () => {
                     </p>
                   </div>
                   <Button
-                    className="text-sm font-semibold text-red-700 underline"
                     type="button"
+                    label="Hapus"
+                    icon="pi pi-trash"
+                    severity="danger"
+                    text
+                    size="small"
                     onClick={() => removeFromCart(item.uuid)}
-                  >
-                    Hapus
-                  </Button>
+                  />
                 </li>
               ))}
             </ul>
@@ -124,15 +130,16 @@ export const CartPage: React.FC = () => {
           Ongkir dan biaya kemas dihitung setelah kamu memilih cara serah.
           Pesanan dari toko berbeda dapat memiliki ongkir terpisah.
         </p>
-        <Button
-          className="primary-action mt-5 w-full"
+        <button
+          className="btn-cta mt-5 w-full text-sm"
           type="button"
           onClick={() =>
             navigate(token ? "/checkout" : "/masuk?next=%2Fcheckout")
           }
         >
-          {token ? "Lanjut ke checkout" : "Masuk untuk checkout"}
-        </Button>
+          <i className="pi pi-shopping-bag text-sm" aria-hidden="true" />
+          <span>{token ? "Lanjut ke checkout" : "Masuk untuk checkout"}</span>
+        </button>
       </section>
     </div>
   );
@@ -554,9 +561,15 @@ export const CheckoutPage: React.FC = () => {
                 pesanan setelah pembayaran.
               </p>
             )}
-            <Button className="secondary-action" type="button" disabled={busy} onClick={() => void validateCheckout()}>
-              {busy ? "Memeriksa…" : "Periksa ongkir dan ketersediaan"}
-            </Button>
+            <Button
+              type="button"
+              label={busy ? "Memeriksa…" : "Periksa ongkir dan ketersediaan"}
+              icon="pi pi-truck"
+              outlined
+              size="small"
+              disabled={busy}
+              onClick={() => void validateCheckout()}
+            />
           </section>
 
           <section className="form-card">
@@ -647,14 +660,18 @@ export const CheckoutPage: React.FC = () => {
                 <label htmlFor="confirm-order-details">Data sudah benar. Saya setuju pesanan dikonfirmasi dan barang ditahan selama 30 menit.</label>
               </div>
             )}
-            <Button
-              className="primary-action mt-5 w-full"
+            <button
+              className="btn-cta mt-5 w-full text-sm"
               type="button"
               disabled={!quote || !confirmed || busy}
               onClick={() => void confirmOrder()}
             >
-              {busy ? "Mengonfirmasi…" : "Konfirmasi pesanan"}
-            </Button>
+              <i
+                className={`pi ${busy ? "pi-spin pi-spinner" : "pi-check-circle"} text-sm`}
+                aria-hidden="true"
+              />
+              <span>{busy ? "Mengonfirmasi…" : "Konfirmasi pesanan"}</span>
+            </button>
           </section>
         </>
       )}
@@ -733,6 +750,7 @@ export const OrdersPage: React.FC = () => {
       <ul className="space-y-3">
         {orders.map((order) => {
           const isPendingPay = order.status === "menunggu_bayar";
+          const statusMeta = getOrderStatusMeta(order.status);
           const itemTitles = order.items?.map((i) => i.judul).join(", ");
           return (
             <li
@@ -745,13 +763,13 @@ export const OrdersPage: React.FC = () => {
                     {order.kode}
                   </p>
                   <span
-                    className={`rounded-pil px-2.5 py-0.5 text-[11px] font-semibold ${
-                      isPendingPay
-                        ? "bg-kunyit-muda text-kunyit-tua"
-                        : "bg-teh-muda text-teh-tua"
-                    }`}
+                    className={`inline-flex items-center gap-1.5 rounded-pil border px-2.5 py-0.5 text-[11px] font-semibold ${statusMeta.badgeClass}`}
                   >
-                    {isPendingPay ? "Menunggu pembayaran" : order.status}
+                    <i
+                      className={`${statusMeta.icon} text-[10px]`}
+                      aria-hidden="true"
+                    />
+                    <span>{statusMeta.label}</span>
                   </span>
                 </div>
                 {itemTitles && (
@@ -794,6 +812,7 @@ export const OrderPage: React.FC = () => {
   const [vaBank, setVaBank] = useState<string>("bca");
   const [payment, setPayment] = useState<PaymentInstruction | null>(null);
   const [pollingPayment, setPollingPayment] = useState(false);
+  const [syncingPayment, setSyncingPayment] = useState(false);
   const [savedAddresses, setSavedAddresses] = useState<
     Awaited<ReturnType<typeof publicApi.getBuyerAddresses>>
   >([]);
@@ -1007,8 +1026,37 @@ export const OrderPage: React.FC = () => {
       setError("Batas waktu bayar habis. Barang kembali tersedia di katalog.");
     } else {
       setNotice(
-        "Pembayaran masih menunggu konfirmasi webhook. Tekan 'Perbarui status' beberapa saat lagi."
+        "Pembayaran masih menunggu konfirmasi webhook. Tekan 'Cek Status Pembayaran' beberapa saat lagi."
       );
+    }
+  };
+
+  const syncPaymentStatus = async () => {
+    if (!token || !order) return;
+    setSyncingPayment(true);
+    setError(null);
+    setNotice(null);
+    try {
+      const synced = await publicApi.syncBuyerOrderPayment(token, order.uuid);
+      if (synced?.status) {
+        setOrder(synced);
+      }
+      await loadOrder();
+      if (synced?.status === "dibayar") {
+        setNotice(
+          "Pembayaran berhasil dikonfirmasi! Kuitansi Kebaikan tersedia."
+        );
+      } else {
+        setNotice("Status pembayaran sudah disinkronkan dengan server.");
+      }
+    } catch (cause) {
+      setError(
+        cause instanceof Error
+          ? cause.message
+          : "Gagal memeriksa status pembayaran."
+      );
+    } finally {
+      setSyncingPayment(false);
     }
   };
 
@@ -1176,25 +1224,68 @@ export const OrderPage: React.FC = () => {
       {loading && <p role="status">Memuat status pesanan…</p>}
       {order && (
         <>
-          <div className="form-card">
-            <p className="text-sm text-muted">Status pesanan</p>
-            <p className="mt-1 text-xl font-bold text-tinta">{order.status}</p>
-            {hasHold && (
-              <p className="mt-2 text-sm text-muted">
-                Batas penahanan:{" "}
-                {secondsRemaining === 0
-                  ? "Masa penahanan telah berakhir."
-                  : secondsRemaining !== null
-                    ? `${Math.floor(secondsRemaining / 60)} menit ${secondsRemaining % 60} detik`
-                    : holdExpiresAt
-                      ? new Date(holdExpiresAt).toLocaleString("id-ID")
-                      : ""}
-              </p>
-            )}
-            <Button className="mt-3 text-sm font-semibold text-nila underline" type="button" onClick={() => void loadOrder()}>
-              Perbarui status
-            </Button>
-          </div>
+          {(() => {
+            const statusMeta = getOrderStatusMeta(order.status);
+            return (
+              <div className="form-card">
+                <p className="text-sm text-muted">Status pesanan</p>
+                <div className="mt-2 flex flex-wrap items-center gap-2.5">
+                  <span
+                    className={`inline-flex items-center gap-2 rounded-pil border px-3 py-1 text-sm font-bold ${statusMeta.badgeClass}`}
+                  >
+                    <i
+                      className={`${statusMeta.icon} text-xs`}
+                      aria-hidden="true"
+                    />
+                    <span>{statusMeta.label}</span>
+                  </span>
+                </div>
+                {hasHold && (
+                  <p className="mt-3 text-sm text-muted">
+                    Batas penahanan:{" "}
+                    {secondsRemaining === 0
+                      ? "Masa penahanan telah berakhir."
+                      : secondsRemaining !== null
+                        ? `${Math.floor(secondsRemaining / 60)} menit ${secondsRemaining % 60} detik`
+                        : holdExpiresAt
+                          ? new Date(holdExpiresAt).toLocaleString("id-ID")
+                          : ""}
+                  </p>
+                )}
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  {isPendingPayment ? (
+                    <Button
+                      type="button"
+                      label={
+                        syncingPayment
+                          ? "Memeriksa…"
+                          : "Cek Status Pembayaran"
+                      }
+                      icon={
+                        syncingPayment
+                          ? "pi pi-spin pi-spinner"
+                          : "pi pi-refresh"
+                      }
+                      outlined
+                      size="small"
+                      disabled={syncingPayment || busy || pollingPayment}
+                      onClick={() => void syncPaymentStatus()}
+                    />
+                  ) : (
+                    <Button
+                      type="button"
+                      label="Muat ulang status"
+                      icon="pi pi-refresh"
+                      outlined
+                      size="small"
+                      disabled={loading || busy}
+                      onClick={() => void loadOrder()}
+                    />
+                  )}
+                </div>
+              </div>
+            );
+          })()}
 
           {isPendingPayment && (
             <div className="form-card space-y-4">
@@ -1204,7 +1295,7 @@ export const OrderPage: React.FC = () => {
 
               {holdExpired && (
                 <p className="rounded-kartu border border-bahaya bg-bahaya-muda p-3 text-xs font-medium text-bahaya">
-                  Batas waktu bayar telah habis. Klik &quot;Perbarui status&quot;
+                  Batas waktu bayar telah habis. Klik &quot;Cek Status Pembayaran&quot;
                   untuk memeriksa status terbaru pesanan.
                 </p>
               )}
@@ -1373,8 +1464,9 @@ export const OrderPage: React.FC = () => {
               <Button
                 type="button"
                 label="Batalkan sebelum membayar"
+                icon="pi pi-times"
                 severity="danger"
-                text
+                outlined
                 size="small"
                 disabled={busy}
                 onClick={() => void cancelOrder()}
@@ -1439,17 +1531,18 @@ export const OrderPage: React.FC = () => {
                   />
                 </label>
                 <Button
-                  className="secondary-action"
                   type="button"
+                  label="Perbarui alamat"
+                  icon="pi pi-map-marker"
+                  outlined
+                  size="small"
                   disabled={
                     busy ||
                     !selectedAddressUuid ||
                     selectedAddressUuid === order.address_uuid
                   }
                   onClick={() => void updateOrderAddress()}
-                >
-                  Perbarui alamat
-                </Button>
+                />
               </div>
             )}
 
@@ -1485,9 +1578,13 @@ export const OrderPage: React.FC = () => {
           )}
 
           {order.status.toLowerCase().includes("dikirim") && (
-            <Button className="primary-action" type="button" disabled={busy} onClick={() => void confirmReceived()}>
-              Konfirmasi barang diterima
-            </Button>
+            <Button
+              type="button"
+              label="Konfirmasi barang diterima"
+              icon="pi pi-check-circle"
+              disabled={busy}
+              onClick={() => void confirmReceived()}
+            />
           )}
 
           {(order.status.toLowerCase().includes("diterima") ||
@@ -1504,9 +1601,15 @@ export const OrderPage: React.FC = () => {
                     onChange={(event) => setDisputeReason(event.target.value)}
                   />
                 </label>
-                <Button className="secondary-action" type="submit" disabled={busy}>
-                  Kirim komplain
-                </Button>
+                <Button
+                  type="submit"
+                  label="Kirim komplain"
+                  icon="pi pi-flag"
+                  severity="warning"
+                  outlined
+                  size="small"
+                  disabled={busy}
+                />
               </form>
               {!reviewSubmitted ? (
                 <form className="form-card space-y-3" onSubmit={submitReview}>
@@ -1545,12 +1648,11 @@ export const OrderPage: React.FC = () => {
                     />
                   </label>
                   <Button
-                    className="primary-action"
                     type="submit"
+                    label="Kirim ulasan"
+                    icon="pi pi-star"
                     disabled={busy}
-                  >
-                    Kirim ulasan
-                  </Button>
+                  />
                 </form>
               ) : (
                 <p className="form-alert success" role="status">

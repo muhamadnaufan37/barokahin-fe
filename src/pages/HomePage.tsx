@@ -11,7 +11,11 @@ import { useStorefront } from "../context/StorefrontContext";
 import { publicApi } from "../services/publicApi";
 import { BuyerOrder, PublicActivity, PublicItem } from "../types";
 import { getCategoryMeta } from "../utils/category";
-import { formatDateId, formatRupiah } from "../utils/format";
+import {
+  formatDateId,
+  formatRupiah,
+  getOrderStatusMeta,
+} from "../utils/format";
 
 const RECEIPT_ROWS = [
   {
@@ -170,15 +174,28 @@ export const HomePage: React.FC = () => {
             </Link>
           </div>
           <div className="grid gap-3 md:grid-cols-2">
-            {pendingOrders.map((order) => (
-              <div
-                key={order.uuid}
-                className="flex flex-wrap items-center justify-between gap-3 rounded-kartu border border-garis bg-putih p-3.5"
-              >
-                <div className="min-w-0 space-y-1">
-                  <p className="font-mono text-xs font-bold text-muted">
-                    {order.kode}
-                  </p>
+            {pendingOrders.map((order) => {
+              const statusMeta = getOrderStatusMeta(order.status);
+              return (
+                <div
+                  key={order.uuid}
+                  className="flex flex-wrap items-center justify-between gap-3 rounded-kartu border border-garis bg-putih p-3.5"
+                >
+                  <div className="min-w-0 space-y-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="font-mono text-xs font-bold text-muted">
+                        {order.kode}
+                      </p>
+                      <span
+                        className={`inline-flex items-center gap-1 rounded-pil border px-2 py-0.5 text-[10px] font-semibold ${statusMeta.badgeClass}`}
+                      >
+                        <i
+                          className={`${statusMeta.icon} text-[9px]`}
+                          aria-hidden="true"
+                        />
+                        <span>{statusMeta.label}</span>
+                      </span>
+                    </div>
                   <p className="truncate text-sm font-bold text-tinta">
                     {order.items?.map((i) => i.judul).join(", ") ||
                       "Pesanan Barokahiin"}
@@ -204,7 +221,8 @@ export const HomePage: React.FC = () => {
                   <i className="pi pi-arrow-right text-[11px]" aria-hidden="true" />
                 </Link>
               </div>
-            ))}
+              );
+            })}
           </div>
         </section>
       )}

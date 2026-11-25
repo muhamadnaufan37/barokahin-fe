@@ -127,9 +127,13 @@ export async function payWithMidtrans(paymentData, { onSettled, onPending, onClo
 
 ---
 
-### Langkah 3 — Polling Status Pesanan (Verifikasi Backend)
+### Langkah 3 — Polling & Sinkronisasi Status Pesanan (Dual Confirmation)
 
-Setelah `onSuccess` atau `onPending` terpanggil (atau saat user kembali dari `redirect_url`), lakukan polling ke backend setiap 3 detik (maksimal ~30–60 detik):
+Setelah `onSuccess` atau `onPending` terpanggil (atau saat user kembali dari `redirect_url`), panggil `GET /barokahiin/buyer/orders/{orderKode}` setiap 3 detik (maksimal ~30–60 detik).
+
+> **Auto-Sync Midtrans Aktif:**
+> Saat pesanan masih `menunggu_bayar`, endpoint `GET /barokahiin/buyer/orders/{orderKode}` **otomatis mengecek status terbaru langsung ke Midtrans Core API** (`GET /v2/{gateway_ref}/status`) sebagai fallback bila webhook terlambat atau saat testing di localhost tanpa ngrok.
+> Tersedia juga endpoint eksplisit **`POST /api/v1/barokahiin/buyer/orders/{order_uuid}/sync-payment`** untuk tombol **"Cek Status Pembayaran"** manual di halaman pesanan.
 
 ```js
 export async function pollOrderUntilPaid(api, token, orderKode, maxAttempts = 15) {
