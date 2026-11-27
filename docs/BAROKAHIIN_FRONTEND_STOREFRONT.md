@@ -260,6 +260,7 @@ Periksa respons `data`:
   - `items[]`: menyertakan `judul_snapshot`, `harga_idr`, `jalur_snapshot`, shortcut **`slug`** & **`cover_url`**, serta relasi **`item: { id, uuid, slug, cover_media_id, cover_url, cover_media: { id, url, alt } }`** agar foto produk dan tautan ke halaman detail barang langsung tampil.
   - `store`: `{ id, uuid, nama, slug }`.
   - `fulfillment`, `payments`, `pickup_code` *(terisi saat `serah = ambil` & `status = siap_diambil`)*.
+  - `disputes[]` *(beserta `messages[]` berisi balasan Koordinator & Pembeli, serta status putusan Admin)* dan `refunds[]` *(status & nominal pengembalian dana jika disetujui Admin atau auto-refund)*.
   - `review`: `null` atau objek ulasan tersimpan agar status **"Sudah diulas"** selalu konsisten lintas perangkat/URL langsung.
 
 | Status Pesanan | Arti | Tombol / Aksi Pembeli yang Aktif di UI |
@@ -280,6 +281,14 @@ Agar pembeli tidak bingung dengan kode teknis ledger (`H`, `O`, `K`, `N`, `progr
 - `ringkasan_kebaikan.alokasi_dana[]`: daftar pos alokasi (hanya pos > Rp0) berisi `{ kode, label, deskripsi, nominal_idr, persentase }` — langsung render sebagai list/progress bar.
 - `ringkasan_kebaikan.program_tujuan[]`: daftar program charity tujuan lengkap dengan `{ judul, slug, nominal_idr }`.
 - `ringkasan_kebaikan.barang[]`: daftar barang beserta `jalur_label` (`"Barang Charity (95% Program Charity, 5% Cadangan Jaminan)"` vs `"Barang Jual Reguler (Bagi Hasil Transparan)"`).
+
+### 7.2 Alur Komplain & Refund Pembeli
+Pembeli **tidak dapat mengeksekusi refund langsung** secara sepihak; pengembalian dana diproses melalui alur komplain terverifikasi:
+1. **Ajukan Komplain** *(dalam 48 jam setelah status `diterima`)*: `POST /api/v1/barokahiin/buyer/orders/{order_uuid}/disputes` (`{ "alasan": "..." }`) → status pesanan berubah ke `komplain`.
+2. **Lihat Daftar & Thread Balasan Komplain**:
+   - Muncul langsung di `order.disputes[].messages[]` pada `GET /buyer/orders` & `GET /buyer/orders/{kode}` (termasuk balasan Koordinator), **atau** lewat `GET /api/v1/barokahiin/buyer/disputes`.
+3. **Balas Tanggapan Koordinator**: `POST /api/v1/barokahiin/buyer/disputes/{dispute_uuid}/messages` (`{ "pesan": "..." }`).
+4. **Putusan & Refund oleh Admin**: Admin memutus komplain (`tolak` | `refund_sebagian` | `refund_penuh`). Jika disetujui refund, data pengembalian dana otomatis muncul pada **`order.refunds[]`** (`jumlah_idr`, `alasan`, `status`, `bukti_ref`).
 
 ---
 

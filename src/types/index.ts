@@ -314,7 +314,8 @@ export interface BuyerAddress {
   village_code?: string;
   wilayah_code?: string;
   kode_pos: string;
-  jalan_nomor_enc: string;
+  jalan: string;
+  jalan_nomor_enc?: string;
   jalan_nomor?: string;
   rt_rw: string;
   patokan: string;
@@ -417,8 +418,10 @@ export interface CheckoutOrder {
 export interface PaymentInstruction {
   uuid?: string;
   status: string;
+  mode?: "snap" | "core_api";
   metode: "snap" | "qris" | "va" | "ewallet";
   bank?: string;
+  ewallet_provider?: "gopay" | "shopeepay";
   gateway?: string;
   gateway_ref?: string;
   jumlah_idr?: number;
@@ -432,6 +435,14 @@ export interface PaymentInstruction {
   payment_instructions?: {
     enabled_payments?: string[];
     snap_js_url?: string;
+    qr_url?: string;
+    qr_string?: string;
+    va_number?: string;
+    bank?: string;
+    biller_code?: string;
+    bill_key?: string;
+    deeplink_url?: string;
+    expiry_time?: string;
   };
   payment_url?: string;
   qris_url?: string;

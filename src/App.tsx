@@ -68,6 +68,11 @@ const OrderPage = lazy(() =>
     default: module.OrderPage,
   }))
 );
+const PaymentSuccessPage = lazy(() =>
+  import("./pages/PaymentSuccessPage").then((module) => ({
+    default: module.PaymentSuccessPage,
+  }))
+);
 const StoresPage = lazy(() =>
   import("./pages/PublicStorePages").then((module) => ({
     default: module.StoresPage,
@@ -111,6 +116,14 @@ export const App: React.FC = () => {
                   <Route path="/checkout" element={<CheckoutPage />} />
                   <Route path="/pesanan" element={<OrdersPage />} />
                   <Route path="/pesanan/:code" element={<OrderPage />} />
+                  <Route
+                    path="/pesanan/:code/berhasil"
+                    element={<PaymentSuccessPage />}
+                  />
+                  <Route
+                    path="/pembayaran/berhasil"
+                    element={<PaymentSuccessPage />}
+                  />
                   <Route path="/kegiatan" element={<ActivitiesPage />} />
                   <Route path="/kegiatan/:slug" element={<ActivityDetailPage />} />
                   <Route path="/dampak" element={<Navigate to="/kegiatan" replace />} />

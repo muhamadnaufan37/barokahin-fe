@@ -1,10 +1,25 @@
-# Panduan Integrasi Payment Gateway Midtrans (Frontend Storefront Barokahiin)
+# Panduan Integrasi Payment Gateway Midtrans — Snap & Core API (Frontend Storefront Barokahiin)
 
-Dokumen ini adalah **panduan khusus tim Frontend Storefront** untuk mengintegrasikan pembayaran **Midtrans Snap** pada Barokahiin secara aman dan sesuai arsitektur e-commerce.
+Dokumen ini adalah **panduan khusus tim Frontend Storefront** untuk mengintegrasikan pembayaran **Midtrans** pada Barokahiin yang mendukung **2 mode pembayaran**:
+1. **`mode: "snap"` (default)** — Popup / halaman redirect bawaan Midtrans Snap (`window.snap.pay(snap_token)`).
+2. **`mode: "core_api"`** — Custom UI langsung di Storefront (menampilkan nomor Virtual Account, gambar QRIS, atau tombol deeplink GoPay/ShopeePay tanpa popup Snap).
 
 > **Aturan Keamanan Utama:**
-> - **Jangan pernah** menaruh `MIDTRANS_SERVER_KEY` di kode frontend. Frontend hanya menggunakan **`client_key`** dan **`snap_token`** yang diberikan backend.
-> - **Jangan pernah** menganggap callback `onSuccess` dari Midtrans Snap.js sebagai bukti lunas final — status resmi pesanan **selalu** diverifikasi dari backend (`GET /barokahiin/buyer/orders/{kode}`) setelah webhook Midtrans diterima backend.
+> - **Jangan pernah** menaruh `MIDTRANS_SERVER_KEY` di kode frontend.
+> - **Jangan pernah** menganggap callback client-side sebagai bukti lunas final — status resmi pesanan **selalu** diverifikasi dari backend (`GET /barokahiin/buyer/orders/{kode}` atau `POST /barokahiin/buyer/orders/{uuid}/sync-payment`).
+
+---
+
+## 0. Ringkasan Pilihan Mode (`POST /api/v1/barokahiin/buyer/orders/{order_uuid}/pay`)
+
+| Mode | Body Request | Field Respons Utama untuk UI |
+|---|---|---|
+| **Snap (Default)** | `{ "mode": "snap", "metode": "snap" }` | `data.snap_token`, `data.redirect_url`, `data.client_key`, `data.payment_instructions.snap_js_url` |
+| **Core API — QRIS** | `{ "mode": "core_api", "metode": "qris" }` | `data.payment_instructions.qr_url` (gambar PNG QRIS), `qr_string`, `expiry_time` |
+| **Core API — Virtual Account** | `{ "mode": "core_api", "metode": "va", "bank": "bca" }` *(bank: `bca\|bni\|bri\|cimb\|permata\|mandiri`)* | `data.payment_instructions.va_number`, `bank` *(khusus Mandiri: `biller_code` & `bill_key`)*, `expiry_time` |
+| **Core API — E-Wallet** | `{ "mode": "core_api", "metode": "ewallet", "ewallet_provider": "gopay" }` *(`gopay\|shopeepay`)* | `data.payment_instructions.qr_url`, `deeplink_url`, `expiry_time` |
+
+*(Webhook & Auto-Sync `GET /buyer/orders/{kode}` bekerja identik untuk mode `snap` maupun `core_api`.)*
 
 ---
 

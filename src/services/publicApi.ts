@@ -531,7 +531,12 @@ function normalizeBuyerAddress(
       addr.phone_penerima ||
       fallback.kontak_penerima ||
       "",
-    jalan: addr.jalan || addr.jalan_nomor || fallback.jalan || "",
+    jalan:
+      addr.jalan ||
+      addr.jalan_nomor ||
+      addr.jalan_nomor_enc ||
+      fallback.jalan ||
+      "",
     utama: addr.utama ?? addr.is_default ?? fallback.is_default ?? false,
     region_nama: addr.region_nama || addr.region?.nama,
     kode_pos:
@@ -1084,23 +1089,25 @@ export const publicApi = {
   createBuyerPayment(
     token: string,
     orderUuid: string,
-    method: PaymentInstruction["metode"],
-    bankOrKey?: string,
+    payload: {
+      metode: PaymentInstruction["metode"];
+      mode?: "snap" | "core_api";
+      bank?: string;
+      ewallet_provider?: "gopay" | "shopeepay";
+    },
     idempotencyKey = createIdempotencyKey()
   ): Promise<PaymentInstruction> {
-    const isUuidKey =
-      bankOrKey &&
-      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
-        bankOrKey
-      );
-    const bank = isUuidKey ? undefined : bankOrKey;
-    const key = isUuidKey ? bankOrKey : idempotencyKey;
+    const mode = payload.mode || (payload.metode === "snap" ? "snap" : "core_api");
     return buyerRequest(`/orders/${encodeURIComponent(orderUuid)}/pay`, token, {
       method: "POST",
-      headers: { "Idempotency-Key": key },
+      headers: { "Idempotency-Key": idempotencyKey },
       body: JSON.stringify({
-        metode: method,
-        ...(bank ? { bank } : {}),
+        mode,
+        metode: payload.metode,
+        ...(payload.bank ? { bank: payload.bank } : {}),
+        ...(payload.ewallet_provider
+          ? { ewallet_provider: payload.ewallet_provider }
+          : {}),
       }),
     });
   },

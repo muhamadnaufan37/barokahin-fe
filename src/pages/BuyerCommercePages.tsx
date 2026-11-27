@@ -12,6 +12,7 @@ import { Dialog } from "primereact/dialog";
 import { Dropdown } from "primereact/dropdown";
 import { InputText } from "primereact/inputtext";
 import { InputTextarea } from "primereact/inputtextarea";
+import { Skeleton } from "primereact/skeleton";
 import { useBuyer } from "../context/BuyerContext";
 import {
   ApiClientError,
@@ -591,7 +592,10 @@ export const CheckoutPage: React.FC = () => {
       </section>
 
       {loading ? (
-        <p className="form-card" role="status">Memeriksa profil dan alamat…</p>
+        <div className="space-y-4" role="status" aria-label="Memeriksa profil dan alamat">
+          <Skeleton height="9rem" borderRadius="12px" />
+          <Skeleton height="12rem" borderRadius="12px" />
+        </div>
       ) : missingProfile ? (
         <section className="form-card">
           <h2 className="text-lg font-bold text-tinta">
@@ -683,9 +687,10 @@ export const CheckoutPage: React.FC = () => {
             <Button
               type="button"
               label={busy ? "Memeriksa…" : "Periksa ongkir dan ketersediaan"}
-              icon="pi pi-truck"
+              icon={busy ? "pi pi-spin pi-spinner" : "pi pi-truck"}
               outlined
               size="small"
+              loading={busy}
               disabled={busy}
               onClick={() => void validateCheckout()}
             />
@@ -1000,7 +1005,13 @@ export const OrdersPage: React.FC = () => {
           })}
         </div>
       </header>
-      {loading && <p role="status">Memuat pesanan…</p>}
+      {loading && (
+        <div className="space-y-3" role="status" aria-label="Memuat pesanan">
+          <Skeleton height="9rem" borderRadius="12px" />
+          <Skeleton height="9rem" borderRadius="12px" />
+          <Skeleton height="9rem" borderRadius="12px" />
+        </div>
+      )}
       {error && <p className="form-alert error" role="alert">{error}</p>}
       {!loading && !orders.length && !error && (
         <div className="form-card space-y-3 text-center py-8">
@@ -1223,6 +1234,9 @@ export const OrderPage: React.FC = () => {
   const [paymentMethod, setPaymentMethod] =
     useState<PaymentInstruction["metode"]>("snap");
   const [vaBank, setVaBank] = useState<string>("bca");
+  const [ewalletProvider, setEwalletProvider] = useState<
+    "gopay" | "shopeepay"
+  >("gopay");
   const [payment, setPayment] = useState<PaymentInstruction | null>(null);
   const [pollingPayment, setPollingPayment] = useState(false);
   const [syncingPayment, setSyncingPayment] = useState(false);
@@ -1242,6 +1256,9 @@ export const OrderPage: React.FC = () => {
   );
   const [notice, setNotice] = useState<string | null>(null);
   const [secondsRemaining, setSecondsRemaining] = useState<number | null>(null);
+  const [loadingReceipt, setLoadingReceipt] = useState(false);
+  const [loadingPickup, setLoadingPickup] = useState(false);
+  const [loadingAddresses, setLoadingAddresses] = useState(false);
 
   const loadOrder = async () => {
     if (!token) return;
@@ -1259,11 +1276,14 @@ export const OrderPage: React.FC = () => {
         setPayment(data.payments[0]);
       }
       if (shouldLoadImpactReceipt(data.status)) {
-        const orderReceipt = await publicApi.getBuyerImpactReceipt(
-          token,
-          code
-        );
-        setReceipt(orderReceipt);
+        setLoadingReceipt(true);
+        publicApi
+          .getBuyerImpactReceipt(token, code)
+          .then((orderReceipt) => setReceipt(orderReceipt))
+          .catch(() => {
+            // Kuitansi belum tersedia
+          })
+          .finally(() => setLoadingReceipt(false));
       }
       if (
         data.serah === "ambil" &&
@@ -1271,12 +1291,14 @@ export const OrderPage: React.FC = () => {
           data.status.toLowerCase()
         )
       ) {
+        setLoadingPickup(true);
         publicApi
           .getBuyerOrderPickup(token, code)
           .then((info) => setPickupInfo(info))
           .catch(() => {
             // Alamat titik ambil belum tersedia
-          });
+          })
+          .finally(() => setLoadingPickup(false));
       }
     } catch (cause) {
       if (
@@ -1359,7 +1381,7 @@ export const OrderPage: React.FC = () => {
   useEffect(() => {
     paymentKey.current = null;
     setPayment(null);
-  }, [paymentMethod]);
+  }, [paymentMethod, vaBank, ewalletProvider]);
 
   useEffect(() => {
     if (
@@ -1373,6 +1395,7 @@ export const OrderPage: React.FC = () => {
     }
 
     let active = true;
+    setLoadingAddresses(true);
     publicApi
       .getBuyerAddresses(token)
       .then((addresses) => {
@@ -1399,6 +1422,9 @@ export const OrderPage: React.FC = () => {
               : "Buku alamat belum bisa dimuat."
           );
         }
+      })
+      .finally(() => {
+        if (active) setLoadingAddresses(false);
       });
 
     return () => {
@@ -1444,8 +1470,10 @@ export const OrderPage: React.FC = () => {
       setOrder(result.order);
     }
     if (result.status === "dibayar") {
-      setNotice("Pembayaran berhasil dikonfirmasi! Kuitansi Kebaikan tersedia.");
-      await loadOrder();
+      navigate(`/pesanan/${encodeURIComponent(code)}/berhasil`, {
+        replace: true,
+        state: { order: result.order },
+      });
     } else if (result.status === "kedaluwarsa") {
       setError("Batas waktu bayar habis. Barang kembali tersedia di katalog.");
     } else {
@@ -1467,9 +1495,10 @@ export const OrderPage: React.FC = () => {
       }
       await loadOrder();
       if (synced?.status === "dibayar") {
-        setNotice(
-          "Pembayaran berhasil dikonfirmasi! Kuitansi Kebaikan tersedia."
-        );
+        navigate(`/pesanan/${encodeURIComponent(code)}/berhasil`, {
+          replace: true,
+          state: { order: synced },
+        });
       } else {
         setNotice("Status pembayaran sudah disinkronkan dengan server.");
       }
@@ -1507,12 +1536,23 @@ export const OrderPage: React.FC = () => {
       const instruction = await publicApi.createBuyerPayment(
         token,
         order.uuid,
-        paymentMethod,
-        paymentMethod === "va" ? vaBank : undefined,
+        {
+          metode: paymentMethod,
+          mode: paymentMethod === "snap" ? "snap" : "core_api",
+          bank: paymentMethod === "va" ? vaBank : undefined,
+          ewallet_provider:
+            paymentMethod === "ewallet" ? ewalletProvider : undefined,
+        },
         paymentKey.current
       );
       setPayment(instruction);
-      await openSnapCheckout(instruction);
+      if (instruction.mode === "snap" || instruction.snap_token) {
+        await openSnapCheckout(instruction);
+      } else {
+        setNotice(
+          "Instruksi pembayaran siap di bawah. Selesaikan pembayaran lalu klik 'Cek Status Pembayaran'."
+        );
+      }
     } catch (cause) {
       if (
         cause instanceof ApiClientError &&
@@ -1658,7 +1698,19 @@ export const OrderPage: React.FC = () => {
       </header>
       {error && <p className="form-alert error" role="alert">{error}</p>}
       {notice && <p className="form-alert success" role="status">{notice}</p>}
-      {loading && <p role="status">Memuat status pesanan…</p>}
+      {loading && !order && (
+        <div className="space-y-4" role="status" aria-label="Memuat detail pesanan">
+          <Skeleton height="9rem" borderRadius="12px" />
+          <Skeleton height="12rem" borderRadius="12px" />
+          <Skeleton height="10rem" borderRadius="12px" />
+        </div>
+      )}
+      {loading && order && (
+        <p className="flex items-center gap-2 text-xs font-medium text-muted" role="status">
+          <i className="pi pi-spin pi-spinner text-nila" aria-hidden="true" />
+          <span>Menyegarkan data pesanan terbaru…</span>
+        </p>
+      )}
       {order && (
         <>
           {(() => {
@@ -1910,10 +1962,10 @@ export const OrderPage: React.FC = () => {
                       className="form-input"
                       value={paymentMethod}
                       options={[
-                        { label: "Midtrans Snap (Semua metode)", value: "snap" },
-                        { label: "QRIS", value: "qris" },
-                        { label: "Transfer virtual account", value: "va" },
-                        { label: "E-wallet", value: "ewallet" },
+                        { label: "Midtrans Snap (Popup semua metode)", value: "snap" },
+                        { label: "QRIS (Tampil langsung di halaman)", value: "qris" },
+                        { label: "Transfer Virtual Account (Langsung)", value: "va" },
+                        { label: "E-Wallet GoPay / ShopeePay (Langsung)", value: "ewallet" },
                       ]}
                       onChange={(event) =>
                         setPaymentMethod(
@@ -1933,10 +1985,30 @@ export const OrderPage: React.FC = () => {
                           { label: "BCA Virtual Account", value: "bca" },
                           { label: "BNI Virtual Account", value: "bni" },
                           { label: "BRI Virtual Account", value: "bri" },
+                          { label: "CIMB Niaga Virtual Account", value: "cimb" },
                           { label: "Permata Virtual Account", value: "permata" },
                           { label: "Mandiri Bill", value: "mandiri" },
                         ]}
                         onChange={(event) => setVaBank(String(event.value))}
+                      />
+                    </label>
+                  )}
+
+                  {paymentMethod === "ewallet" && (
+                    <label className="form-field">
+                      <span>Pilih E-Wallet</span>
+                      <Dropdown
+                        className="form-input"
+                        value={ewalletProvider}
+                        options={[
+                          { label: "GoPay", value: "gopay" },
+                          { label: "ShopeePay", value: "shopeepay" },
+                        ]}
+                        onChange={(event) =>
+                          setEwalletProvider(
+                            event.value as "gopay" | "shopeepay"
+                          )
+                        }
                       />
                     </label>
                   )}
@@ -1959,93 +2031,207 @@ export const OrderPage: React.FC = () => {
                         ? "Menyiapkan pembayaran…"
                         : pollingPayment
                           ? "Memverifikasi pembayaran…"
-                          : "Bayar dengan Midtrans"}
+                          : paymentMethod === "snap"
+                            ? "Bayar dengan Midtrans Snap"
+                            : "Buat instruksi pembayaran"}
                     </span>
                   </button>
                 </>
               )}
 
-              {existingPayment && (
-                <div className="space-y-2 rounded-kartu border border-teh bg-teh-muda p-4 text-sm text-tinta">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <p className="font-semibold text-teh-tua">
-                      Instruksi pembayaran
-                    </p>
-                    <span className="rounded-pil bg-putih px-2.5 py-0.5 text-xs font-semibold text-teh-tua">
-                      {existingPayment.status}
-                    </span>
-                  </div>
-                  <div className="grid gap-1 text-xs sm:grid-cols-2">
-                    <p>
-                      <span className="text-muted">Metode:</span>{" "}
-                      <strong>{existingPayment.metode.toUpperCase()}</strong>
-                      {existingPayment.gateway
-                        ? ` (${existingPayment.gateway})`
-                        : ""}
-                    </p>
-                    {existingPayment.gateway_ref && (
+              {existingPayment && (() => {
+                const pi = existingPayment.payment_instructions;
+                const qrUrl = pi?.qr_url || existingPayment.qris_url;
+                const vaNumber = pi?.va_number || existingPayment.va_number;
+                const vaBankName = pi?.bank || existingPayment.bank;
+                const billerCode = pi?.biller_code;
+                const billKey = pi?.bill_key;
+                const deeplinkUrl = pi?.deeplink_url;
+                const expiryTime =
+                  pi?.expiry_time ||
+                  existingPayment.kedaluwarsa_pada ||
+                  existingPayment.expires_at;
+
+                return (
+                  <div className="space-y-3 rounded-kartu border border-teh bg-teh-muda p-4 text-sm text-tinta">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <p className="font-semibold text-teh-tua">
+                        Instruksi pembayaran
+                      </p>
+                      <span className="rounded-pil bg-putih px-2.5 py-0.5 text-xs font-semibold text-teh-tua">
+                        {existingPayment.status}
+                      </span>
+                    </div>
+                    <div className="grid gap-1 text-xs sm:grid-cols-2">
                       <p>
-                        <span className="text-muted">Referensi:</span>{" "}
-                        <strong className="font-mono">
-                          {existingPayment.gateway_ref}
+                        <span className="text-muted">Metode:</span>{" "}
+                        <strong>
+                          {existingPayment.metode.toUpperCase()}
+                          {vaBankName ? ` (${vaBankName.toUpperCase()})` : ""}
                         </strong>
                       </p>
-                    )}
-                    {typeof existingPayment.jumlah_idr === "number" && (
-                      <p>
-                        <span className="text-muted">Nominal:</span>{" "}
-                        <strong className="tabular-nums text-nila">
-                          {formatRupiah(existingPayment.jumlah_idr)}
-                        </strong>
-                      </p>
-                    )}
-                    {(existingPayment.kedaluwarsa_pada ||
-                      existingPayment.expires_at) && (
+                      {existingPayment.gateway_ref && (
                         <p>
-                          <span className="text-muted">Batas bayar:</span>{" "}
-                          <strong>
-                            {new Date(
-                              existingPayment.kedaluwarsa_pada ||
-                              existingPayment.expires_at ||
-                              ""
-                            ).toLocaleString("id-ID")}
+                          <span className="text-muted">Referensi:</span>{" "}
+                          <strong className="font-mono">
+                            {existingPayment.gateway_ref}
                           </strong>
                         </p>
                       )}
-                  </div>
-                  {existingPayment.va_number && (
-                    <p className="rounded-kontrol bg-putih px-3 py-2 font-mono text-sm font-bold text-nila">
-                      Nomor virtual account: {existingPayment.va_number}
-                    </p>
-                  )}
-                  {existingPayment.qris_url && (
-                    <img
-                      className="mt-2 max-h-64 rounded-kontrol border border-garis bg-putih p-2"
-                      src={existingPayment.qris_url}
-                      alt="Kode QRIS pembayaran"
-                    />
-                  )}
-                  {existingPayment.instructions?.map((instruction) => (
-                    <p className="mt-1 text-xs" key={instruction}>
-                      {instruction}
-                    </p>
-                  ))}
-                  {(existingPayment.redirect_url ||
-                    existingPayment.payment_url) && (
+                      {typeof existingPayment.jumlah_idr === "number" && (
+                        <p>
+                          <span className="text-muted">Nominal:</span>{" "}
+                          <strong className="tabular-nums text-nila">
+                            {formatRupiah(existingPayment.jumlah_idr)}
+                          </strong>
+                        </p>
+                      )}
+                      {expiryTime && (
+                        <p>
+                          <span className="text-muted">Batas bayar:</span>{" "}
+                          <strong>
+                            {new Date(expiryTime).toLocaleString("id-ID")}
+                          </strong>
+                        </p>
+                      )}
+                    </div>
+
+                    {vaNumber && (
+                      <div className="flex flex-wrap items-center justify-between gap-2 rounded-kontrol bg-putih px-3 py-2.5">
+                        <div>
+                          <span className="block text-[11px] text-muted">
+                            Nomor Virtual Account{" "}
+                            {vaBankName ? vaBankName.toUpperCase() : ""}
+                          </span>
+                          <span className="font-mono text-base font-bold text-nila">
+                            {vaNumber}
+                          </span>
+                        </div>
+                        <Button
+                          type="button"
+                          label="Salin VA"
+                          icon="pi pi-copy"
+                          outlined
+                          size="small"
+                          onClick={() => {
+                            void navigator.clipboard?.writeText(vaNumber);
+                            setNotice("Nomor Virtual Account disalin.");
+                          }}
+                        />
+                      </div>
+                    )}
+
+                    {(billerCode || billKey) && (
+                      <div className="space-y-2 rounded-kontrol bg-putih px-3 py-2.5 text-xs">
+                        {billerCode && (
+                          <div className="flex items-center justify-between gap-2">
+                            <span>
+                              Kode Perusahaan (Biller Code):{" "}
+                              <strong className="font-mono text-sm text-nila">
+                                {billerCode}
+                              </strong>
+                            </span>
+                            <Button
+                              type="button"
+                              label="Salin"
+                              outlined
+                              size="small"
+                              onClick={() => {
+                                void navigator.clipboard?.writeText(billerCode);
+                                setNotice("Biller code disalin.");
+                              }}
+                            />
+                          </div>
+                        )}
+                        {billKey && (
+                          <div className="flex items-center justify-between gap-2">
+                            <span>
+                              Kode Bayar (Bill Key):{" "}
+                              <strong className="font-mono text-sm text-nila">
+                                {billKey}
+                              </strong>
+                            </span>
+                            <Button
+                              type="button"
+                              label="Salin"
+                              outlined
+                              size="small"
+                              onClick={() => {
+                                void navigator.clipboard?.writeText(billKey);
+                                setNotice("Bill key disalin.");
+                              }}
+                            />
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {qrUrl && (
+                      <div className="flex flex-col items-center gap-2 rounded-kontrol bg-putih p-4">
+                        <img
+                          className="max-h-64 rounded-kontrol border border-garis bg-putih p-2"
+                          src={qrUrl}
+                          alt="Kode QRIS pembayaran"
+                        />
+                        <p className="text-xs text-muted">
+                          Pindai QR dengan aplikasi e-wallet atau mobile banking
+                        </p>
+                      </div>
+                    )}
+
+                    {deeplinkUrl && (
                       <a
-                        className="secondary-action mt-2"
-                        href={
-                          existingPayment.redirect_url ||
-                          existingPayment.payment_url
-                        }
+                        className="btn-cta w-full text-xs"
+                        href={deeplinkUrl}
                         target="_blank"
                         rel="noopener noreferrer"
                       >
-                        Buka halaman pembayaran Midtrans
+                        <i className="pi pi-external-link text-xs" aria-hidden="true" />
+                        <span>Buka aplikasi e-wallet untuk membayar</span>
                       </a>
                     )}
-                </div>
-              )}
+
+                    {existingPayment.instructions?.map((instruction) => (
+                      <p className="text-xs" key={instruction}>
+                        {instruction}
+                      </p>
+                    ))}
+
+                    <div className="flex flex-wrap items-center gap-2 pt-1">
+                      <Button
+                        type="button"
+                        label={
+                          syncingPayment
+                            ? "Memeriksa…"
+                            : "Cek Status Pembayaran"
+                        }
+                        icon={
+                          syncingPayment
+                            ? "pi pi-spin pi-spinner"
+                            : "pi pi-refresh"
+                        }
+                        size="small"
+                        disabled={syncingPayment || busy}
+                        onClick={() => void syncPaymentStatus()}
+                      />
+                      {(existingPayment.redirect_url ||
+                        existingPayment.payment_url) && (
+                        <a
+                          className="secondary-action text-xs"
+                          href={
+                            existingPayment.redirect_url ||
+                            existingPayment.payment_url
+                          }
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          Buka halaman pembayaran Midtrans
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                );
+              })()}
               <Button
                 type="button"
                 label="Batalkan sebelum membayar"
@@ -2103,6 +2289,16 @@ export const OrderPage: React.FC = () => {
             const pickupDeadline =
               pickupInfo?.ambil_deadline ||
               ("fulfillment" in order ? order.fulfillment?.ambil_deadline : null);
+            if (loadingPickup && !pickupInfo && !pickupCode) {
+              return (
+                <div className="form-card space-y-2" role="status" aria-label="Memuat titik ambil">
+                  <p className="text-xs font-medium text-muted">
+                    Memuat alamat titik ambil…
+                  </p>
+                  <Skeleton height="4rem" borderRadius="8px" />
+                </div>
+              );
+            }
             if (!pickupInfo && !pickupCode) return null;
             return (
               <div className="form-card space-y-3 border-teh bg-teh-muda">
@@ -2174,31 +2370,37 @@ export const OrderPage: React.FC = () => {
                 </p>
                 <label className="form-field">
                   <span>Pilih alamat pengganti</span>
-                  <Dropdown
-                    className="form-input"
-                    value={selectedAddressUuid}
-                    options={savedAddresses.map((address) => ({
-                      label: `${address.penerima} — ${address.jalan_nomor_enc}, ${address.region_nama || address.region_id
-                        }`,
-                      value: address.uuid,
-                    }))}
-                    optionLabel="label"
-                    optionValue="value"
-                    placeholder="Pilih alamat"
-                    onChange={(event) =>
-                      setSelectedAddressUuid(event.value || "")
-                    }
-                    disabled={!savedAddresses.length || busy}
-                  />
+                  {loadingAddresses ? (
+                    <Skeleton height="2.75rem" borderRadius="8px" />
+                  ) : (
+                    <Dropdown
+                      className="form-input"
+                      value={selectedAddressUuid}
+                      options={savedAddresses.map((address) => ({
+                        label: `${address.penerima} — ${address.jalan || address.jalan_nomor_enc || ""}, ${address.region_nama || address.region_id
+                          }`,
+                        value: address.uuid,
+                      }))}
+                      optionLabel="label"
+                      optionValue="value"
+                      placeholder="Pilih alamat"
+                      onChange={(event) =>
+                        setSelectedAddressUuid(event.value || "")
+                      }
+                      disabled={!savedAddresses.length || busy}
+                    />
+                  )}
                 </label>
                 <Button
                   type="button"
-                  label="Perbarui alamat"
+                  label={busy ? "Memperbarui…" : "Perbarui alamat"}
                   icon="pi pi-map-marker"
                   outlined
                   size="small"
+                  loading={busy}
                   disabled={
                     busy ||
+                    loadingAddresses ||
                     !selectedAddressUuid ||
                     selectedAddressUuid === order.address_uuid
                   }
@@ -2206,6 +2408,17 @@ export const OrderPage: React.FC = () => {
                 />
               </div>
             )}
+
+          {loadingReceipt && !receipt && (
+            <div className="form-card space-y-4" role="status" aria-label="Memuat rincian pembayaran">
+              <div className="flex items-center gap-2 text-sm font-semibold text-muted">
+                <i className="pi pi-spin pi-spinner text-nila" aria-hidden="true" />
+                <span>Memuat rincian pembayaran &amp; Kuitansi Kebaikan…</span>
+              </div>
+              <Skeleton height="6rem" borderRadius="8px" />
+              <Skeleton height="7rem" borderRadius="8px" />
+            </div>
+          )}
 
           {receipt && (
             <div className="form-card">
@@ -2373,8 +2586,9 @@ export const OrderPage: React.FC = () => {
           {order.status.toLowerCase().includes("dikirim") && (
             <Button
               type="button"
-              label="Konfirmasi barang diterima"
+              label={busy ? "Memproses…" : "Konfirmasi barang diterima"}
               icon="pi pi-check-circle"
+              loading={busy}
               disabled={busy}
               onClick={() => void confirmReceived()}
             />
