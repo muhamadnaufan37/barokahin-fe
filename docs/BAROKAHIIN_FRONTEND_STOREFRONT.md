@@ -234,7 +234,7 @@ Periksa respons `data`:
 | `dibayar` | Lunas & terverifikasi | **Lihat Kuitansi Kebaikan** (`GET /orders/{kode}/impact-receipt`).<br/>• Jika `serah = kirim`: boleh **Ubah Alamat sesama zona ongkir** (`PATCH /orders/{uuid}/address` dengan `{ address_uuid }`).<br/>• Jika `serah = ambil`: tampilkan **Alamat Lengkap Titik Ambil** (`GET /orders/{kode}/pickup`). |
 | `disiapkan` | Sedang dikemas / disiapkan koordinator | Tampilkan progres; alamat tidak bisa diubah lagi (`409`). |
 | `dikirim` *(khusus `kirim`)* | Sudah diserahkan ke kurir | Tampilkan `fulfillment.kurir` & `fulfillment.resi` dari `GET /orders/{kode}`. Aktifkan tombol **Pesanan Diterima** (`POST /orders/{uuid}/confirm-received`). |
-| `siap_diambil` *(khusus `ambil`)* | Siap diambil di titik ambil | Tampilkan alamat lengkap (`GET /orders/{kode}/pickup`) & instruksi datang ke titik ambil (batas waktu `fulfillment.ambil_deadline`). |
+| `siap_diambil` *(khusus `ambil`)* | Siap diambil di titik ambil | Tampilkan alamat lengkap, **`pickup_code` (6 karakter)**, dan `ambil_deadline` dari `GET /orders/{kode}/pickup` (atau field `pickup_code` pada `GET /orders` & `GET /orders/{kode}`). Pembeli menunjukkan `pickup_code` tersebut ke Koordinator saat serah terima. |
 | `diterima` | Barang sudah diterima pembeli | Aktifkan **Beri Ulasan** (`POST /orders/{uuid}/reviews` dengan `{ rating: 1..5, komentar? }` — juga kompatibel dengan `{ rating_barang, rating_layanan, teks? }`) dan **Ajukan Komplain** (`POST /orders/{uuid}/disputes` dalam 48 jam). |
 | `selesai` | Transaksi final | Tampilkan riwayat & Kuitansi Kebaikan. |
 | `kedaluwarsa` / `dibatalkan` | Hold habis atau dibatalkan | Tampilkan status batal/expired & tombol kembali ke katalog. |
