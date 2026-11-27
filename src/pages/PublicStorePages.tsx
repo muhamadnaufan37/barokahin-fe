@@ -42,7 +42,7 @@ export const StoresPage: React.FC = () => {
 
   useEffect(() => {
     setPageMetadata({
-      title: "Toko Koordinator — Barokahiin",
+      title: "Toko Koordinator — Barokahinn",
       description:
         "Temukan toko koordinator yang mengkurasi barang di wilayahnya.",
       path: "/toko",
@@ -200,7 +200,7 @@ export const StoreDetailPage: React.FC = () => {
         setStore(storeResult);
         setItems(itemResult.items);
         setPageMetadata({
-          title: `${storeResult.nama} — Barokahiin`,
+          title: `${storeResult.nama} — Barokahinn`,
           description:
             storeResult.deskripsi ||
             `Barang terkurasi dari ${storeResult.nama} di ${storeResult.area_publik}.`,

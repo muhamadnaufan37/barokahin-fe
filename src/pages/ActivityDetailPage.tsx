@@ -27,7 +27,7 @@ export const ActivityDetailPage: React.FC = () => {
         const data = await publicApi.getActivityBySlug(slug);
         if (!active) return;
         setActivity(data);
-        document.title = `${data.judul} — Transparansi Dana Barokahiin`;
+        document.title = `${data.judul} — Transparansi Dana Barokahinn`;
       } catch (err) {
         if (active) {
           setError(

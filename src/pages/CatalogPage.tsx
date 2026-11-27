@@ -11,6 +11,7 @@ import { Message } from "primereact/message";
 import { Paginator, PaginatorPageChangeEvent } from "primereact/paginator";
 import { Skeleton } from "primereact/skeleton";
 import { ItemCard } from "../components/ItemCard";
+import { useBuyer } from "../context/BuyerContext";
 import { useStorefront } from "../context/StorefrontContext";
 import { publicApi } from "../services/publicApi";
 import {
@@ -53,6 +54,7 @@ const CHARITY_OPTIONS = [
 
 export const CatalogPage: React.FC = () => {
   const { categories } = useStorefront();
+  const { selectedRegion } = useBuyer();
   const [searchParams, setSearchParams] = useSearchParams();
 
   const kategori = searchParams.get("kategori") || "";
@@ -65,8 +67,15 @@ export const CatalogPage: React.FC = () => {
   const q = searchParams.get("q") || "";
   const serah = (searchParams.get("serah") || "") as "ambil" | "kirim" | "";
   const charity = searchParams.get("charity") || "";
+  const wilayahMode = searchParams.get("wilayah") || "";
   const sort = (searchParams.get("sort") || "terbaru") as ItemSortOption;
   const page = Math.max(1, Number(searchParams.get("page") || "1") || 1);
+
+  const activeRegencyCode = useMemo(() => {
+    if (wilayahMode === "semua" || !selectedRegion?.id) return undefined;
+    const parts = selectedRegion.id.split(".");
+    return parts.length >= 2 ? `${parts[0]}.${parts[1]}` : undefined;
+  }, [wilayahMode, selectedRegion?.id]);
 
   const [searchInput, setSearchInput] = useState(q);
   const [minInput, setMinInput] = useState<number | null>(
@@ -82,7 +91,7 @@ export const CatalogPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    document.title = "Katalog Barang — Barokahiin";
+    document.title = "Katalog Barang — Barokahinn";
   }, []);
 
   useEffect(() => {
@@ -143,6 +152,7 @@ export const CatalogPage: React.FC = () => {
           min_harga: minHarga ? Number(minHarga) : undefined,
           max_harga: maxHarga ? Number(maxHarga) : undefined,
           q: q || undefined,
+          regency_code: activeRegencyCode,
           serah: serah || undefined,
           charity: charity === "true" ? true : charity === "false" ? false : undefined,
           sort,
@@ -166,7 +176,19 @@ export const CatalogPage: React.FC = () => {
     return () => {
       active = false;
     };
-  }, [kategori, status, kondisi, minHarga, maxHarga, q, serah, charity, sort, page]);
+  }, [
+    kategori,
+    status,
+    kondisi,
+    minHarga,
+    maxHarga,
+    q,
+    activeRegencyCode,
+    serah,
+    charity,
+    sort,
+    page,
+  ]);
 
   const activeFilterChips = useMemo(() => {
     const chips: Array<{ key: string; label: string }> = [];
@@ -442,6 +464,35 @@ export const CatalogPage: React.FC = () => {
             />
           </div>
         </div>
+
+        {selectedRegion?.nama && (
+          <div className="flex flex-wrap items-center gap-2 rounded-kontrol bg-kertas px-3 py-2 text-xs">
+            <i className="pi pi-map-marker text-nila" aria-hidden="true" />
+            <span className="text-muted">
+              {activeRegencyCode ? (
+                <>
+                  Menampilkan barang sekitar{" "}
+                  <strong className="text-tinta">{selectedRegion.nama}</strong>
+                </>
+              ) : (
+                "Menampilkan barang dari semua wilayah"
+              )}
+            </span>
+            <Button
+              type="button"
+              label={
+                activeRegencyCode
+                  ? "Tampilkan semua wilayah"
+                  : `Filter ${selectedRegion.nama}`
+              }
+              outlined
+              size="small"
+              onClick={() =>
+                updateParam("wilayah", activeRegencyCode ? "semua" : "")
+              }
+            />
+          </div>
+        )}
 
         {priceError && <small className="p-error block">{priceError}</small>}
 

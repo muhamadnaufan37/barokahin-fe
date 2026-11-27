@@ -54,7 +54,7 @@ export const DonationPage: React.FC = () => {
   const [result, setResult] = useState<DonationRequestResult | null>(null);
 
   useEffect(() => {
-    document.title = "Ajukan Donasi Barang — Barokahiin";
+    document.title = "Ajukan Donasi Barang — Barokahinn";
   }, []);
 
   const categoryOptions = useMemo(
@@ -241,7 +241,7 @@ export const DonationPage: React.FC = () => {
         </h1>
         <p className="mt-1 text-sm text-muted">
           Serahkan barang layak pakai Anda untuk dikurasi dan dijual oleh admin
-          Barokahiin. Seluruh hasil penjualan digunakan untuk mendanai kegiatan.
+          Barokahinn. Seluruh hasil penjualan digunakan untuk mendanai kegiatan.
         </p>
       </div>
 
@@ -560,7 +560,7 @@ export const DonationPage: React.FC = () => {
                 Saya menyatakan barang ini layak pakai dan{" "}
                 <strong>
                   menyetujui barang ini dikurasi serta dijual oleh pengelola
-                  Barokahiin
+                  Barokahinn
                 </strong>{" "}
                 untuk pendanaan kegiatan sosial/keagamaan.
               </label>
@@ -603,7 +603,7 @@ export const DonationPage: React.FC = () => {
                   menyetujui foto dan video barang ditampilkan di storefront
                   publik
                 </strong>{" "}
-                Barokahiin (tanpa menampilkan identitas pribadi saya).
+                Barokahinn (tanpa menampilkan identitas pribadi saya).
               </label>
             </div>
             {fieldErrors.persetujuan_media && (

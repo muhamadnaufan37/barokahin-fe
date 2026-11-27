@@ -186,7 +186,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
               <kbd>Esc</kbd>
             </div>
             <p className="command-caption">
-              {query ? "Hasil pencarian" : "Jelajahi Barokahiin"}
+              {query ? "Hasil pencarian" : "Jelajahi Barokahinn"}
             </p>
             <ul id="command-results" className="command-results" role="listbox">
               {filteredCommands.length ? (

@@ -20,7 +20,7 @@ export const TrustPaymentBanner: React.FC<TrustPaymentBannerProps> = ({
         </div>
         <div className="min-w-0 flex-1 space-y-1.5">
           <p className="text-sm font-semibold text-kunyit-tua">
-            Peringatan keamanan: bayar hanya ke rekening resmi Barokahiin
+            Peringatan keamanan: bayar hanya ke rekening resmi Barokahinn
           </p>
           <p className="text-xs leading-relaxed text-tinta">
             Admin tidak pernah meminta transfer ke rekening pribadi. Pastikan

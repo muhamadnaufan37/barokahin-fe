@@ -9,7 +9,12 @@ import { TrustPaymentBanner } from "../components/TrustPaymentBanner";
 import { useBuyer } from "../context/BuyerContext";
 import { useStorefront } from "../context/StorefrontContext";
 import { publicApi } from "../services/publicApi";
-import { BuyerOrder, PublicActivity, PublicItem } from "../types";
+import {
+  BuyerOrder,
+  PublicActivity,
+  PublicItem,
+  PublicVoucher,
+} from "../types";
 import { getCategoryMeta } from "../utils/category";
 import {
   formatDateId,
@@ -43,10 +48,11 @@ const RECEIPT_ROWS = [
 
 export const HomePage: React.FC = () => {
   const { impact, settings, categories } = useStorefront();
-  const { token, recentOrderCodes } = useBuyer();
+  const { token } = useBuyer();
   const [items, setItems] = useState<PublicItem[]>([]);
   const [activities, setActivities] = useState<PublicActivity[]>([]);
   const [pendingOrders, setPendingOrders] = useState<BuyerOrder[]>([]);
+  const [vouchers, setVouchers] = useState<PublicVoucher[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [openReceiptId, setOpenReceiptId] = useState<string | null>(
@@ -54,36 +60,37 @@ export const HomePage: React.FC = () => {
   );
 
   useEffect(() => {
-    if (!token || !recentOrderCodes.length) {
+    if (!token) {
       setPendingOrders([]);
       return;
     }
     let active = true;
-    Promise.allSettled(
-      recentOrderCodes.map((code) => publicApi.getBuyerOrder(token, code))
-    ).then((results) => {
-      if (!active) return;
-      const activeOrders = results
-        .flatMap((r) => (r.status === "fulfilled" ? [r.value] : []))
-        .filter((order) => order.status === "menunggu_bayar");
-      setPendingOrders(activeOrders);
-    });
+    publicApi
+      .getBuyerOrders(token, { status: "menunggu_bayar", per_page: 5 })
+      .then(({ orders }) => {
+        if (!active) return;
+        setPendingOrders(orders.filter((o) => o.status === "menunggu_bayar"));
+      })
+      .catch(() => {
+        if (active) setPendingOrders([]);
+      });
     return () => {
       active = false;
     };
-  }, [token, recentOrderCodes]);
+  }, [token]);
 
   useEffect(() => {
     document.title =
-      "Barokahiin — Barang yang kamu beli, kebaikan yang kita danai";
+      "Barokahinn — Barang yang kamu beli, kebaikan yang kita danai";
     let active = true;
 
     const loadHomeData = async () => {
       setLoading(true);
       setError(null);
-      const [itemsRes, activitiesRes] = await Promise.allSettled([
+      const [itemsRes, activitiesRes, vouchersRes] = await Promise.allSettled([
         publicApi.getItems({ per_page: 8, sort: "terbaru" }),
         publicApi.getActivities(),
+        publicApi.getPublicVouchers(),
       ]);
 
       if (!active) return;
@@ -100,6 +107,10 @@ export const HomePage: React.FC = () => {
 
       if (activitiesRes.status === "fulfilled") {
         setActivities(activitiesRes.value.slice(0, 3));
+      }
+
+      if (vouchersRes.status === "fulfilled") {
+        setVouchers(vouchersRes.value);
       }
 
       setLoading(false);
@@ -122,7 +133,7 @@ export const HomePage: React.FC = () => {
                 Wilujeng sumping
               </span>{" "}
               <span className="text-nila-muda">
-                (Selamat datang di Barokahiin)
+                (Selamat datang di Barokahinn)
               </span>
             </p>
             <h1 className="font-display text-2xl font-bold leading-tight sm:text-4xl">
@@ -198,7 +209,7 @@ export const HomePage: React.FC = () => {
                     </div>
                   <p className="truncate text-sm font-bold text-tinta">
                     {order.items?.map((i) => i.judul).join(", ") ||
-                      "Pesanan Barokahiin"}
+                      "Pesanan Barokahinn"}
                   </p>
                   <div className="flex flex-wrap items-center gap-2 text-xs">
                     {typeof order.total_idr === "number" && (
@@ -224,6 +235,33 @@ export const HomePage: React.FC = () => {
               );
             })}
           </div>
+        </section>
+      )}
+
+      {/* Strip Promo Voucher Aktif */}
+      {vouchers.length > 0 && (
+        <section
+          aria-label="Voucher promo aktif"
+          className="flex flex-wrap items-center justify-between gap-3 rounded-kartu border border-teh bg-teh-muda px-4 py-3 text-sm"
+        >
+          <div className="flex flex-wrap items-center gap-2.5">
+            <span className="inline-flex items-center gap-1.5 rounded-pil bg-teh px-2.5 py-0.5 text-xs font-bold text-putih">
+              <i className="pi pi-ticket text-[11px]" aria-hidden="true" />
+              <span>Tersedia {vouchers.length} Voucher Aktif</span>
+            </span>
+            <span className="font-semibold text-teh-tua">
+              {vouchers[0].nama || vouchers[0].judul || vouchers[0].code}
+            </span>
+            <span className="rounded-pil bg-putih px-2 py-0.5 font-mono text-xs font-bold text-nila">
+              {vouchers[0].code}
+            </span>
+          </div>
+          <Link
+            to="/katalog"
+            className="text-xs font-bold text-teh-tua hover:underline"
+          >
+            Belanja &amp; pakai voucher →
+          </Link>
         </section>
       )}
 
@@ -266,7 +304,7 @@ export const HomePage: React.FC = () => {
       )}
 
       {/* Ringkasan Dampak */}
-      <section aria-label="Ringkasan dampak Barokahiin" className="space-y-3">
+      <section aria-label="Ringkasan dampak Barokahinn" className="space-y-3">
         <div className="flex items-center justify-between">
           <h2 className="font-display text-lg font-bold text-tinta sm:text-xl">
             Ringkasan dampak

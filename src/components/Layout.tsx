@@ -11,7 +11,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
   const { settings, categories } = useStorefront();
   const { cart, token, selectedRegion, recentOrderCodes } = useBuyer();
   const navigate = useNavigate();
-  const regionLabel = selectedRegion?.nama || "Bandung Raya";
+  const regionLabel = selectedRegion?.nama || "Semua wilayah";
 
   const [scrolled, setScrolled] = useState(false);
   const [megaOpen, setMegaOpen] = useState(false);
@@ -24,10 +24,10 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
   const belanjaBtnRef = useRef<HTMLButtonElement>(null);
   const megaMenuWrapRef = useRef<HTMLDivElement>(null);
 
-  const appName = import.meta.env.VITE_APP_NAME || "Barokahiin";
+  const appName = import.meta.env.VITE_APP_NAME || "Barokahinn";
   const waLink = buildWhatsAppLink(
     settings?.whatsapp_resmi,
-    "Assalamu'alaikum / Halo Admin Barokahiin, saya ingin bertanya tentang barang atau donasi."
+    "Assalamu'alaikum / Halo Admin Barokahinn, saya ingin bertanya tentang barang atau donasi."
   );
 
   useEffect(() => {
@@ -108,8 +108,8 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                 aria-controls="belanja-megamenu"
                 onClick={() => setMegaOpen((prev) => !prev)}
                 className={`inline-flex min-h-[44px] items-center gap-1.5 rounded-pil px-3.5 text-sm font-semibold transition-colors ${megaOpen
-                    ? "bg-nila-muda text-nila-tua"
-                    : "text-tinta hover:bg-kertas"
+                  ? "bg-nila-muda text-nila-tua"
+                  : "text-tinta hover:bg-kertas"
                   }`}
               >
                 <span>Belanja</span>

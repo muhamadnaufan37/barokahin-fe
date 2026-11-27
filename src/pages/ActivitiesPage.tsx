@@ -16,7 +16,7 @@ export const ActivitiesPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    document.title = "Kegiatan & Transparansi Dana — Barokahiin";
+    document.title = "Kegiatan & Transparansi Dana — Barokahinn";
     let active = true;
 
     const load = async () => {

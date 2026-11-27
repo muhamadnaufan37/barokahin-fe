@@ -60,7 +60,7 @@ export const StorefrontProvider: React.FC<{ children: React.ReactNode }> = ({
       setSharedError(
         settingsRes.reason instanceof Error
           ? settingsRes.reason.message
-          : "Gagal memuat data awal Barokahiin."
+          : "Gagal memuat data awal Barokahinn."
       );
     }
 

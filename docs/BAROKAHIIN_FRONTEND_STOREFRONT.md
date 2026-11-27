@@ -143,7 +143,7 @@ Frontend **tidak perlu** mencari `region_id`. Ikuti urutan dropdown berikut:
    - **Kelola alamat lain**: `GET /buyer/me/addresses` (maks 5 alamat), `PATCH /buyer/me/addresses/{uuid}` (edit / set default), `DELETE /buyer/me/addresses/{uuid}`.
 
 ### 5.2 Gate "Siap Beli" (`GET /barokahiin/buyer/me/profile/completeness?serah=kirim|ambil`)
-Panggil saat masuk halaman checkout (dan ulangi jika user mengubah toggle `serah` antara `kirim` dan `ambil`):
+Panggil saat masuk halaman `/akun` atau checkout (dan ulangi jika user mengubah toggle `serah` antara `kirim` dan `ambil`). Respons mengembalikan `{ ready, missing[], user: { id, role_id, nama_lengkap, email, email_verified_at, phone, phone_verified_at, province_code, regency_code, district_code, village_code, wilayah_code, region, terms_version, terms_accepted_at } }` sehingga form `/akun` dapat terisi otomatis (pre-fill) meski `localStorage` dibersihkan:
 
 | Kode pada `missing[]` | Kapan Muncul | Aksi yang Harus Ditampilkan Frontend |
 |---|---|---|
@@ -160,16 +160,45 @@ Panggil saat masuk halaman checkout (dan ulangi jika user mengubah toggle `serah
 
 > **Aturan Keranjang**: 1 pesanan hanya boleh berisi barang dari **1 toko yang sama** (maks 10 barang di keranjang). Jika ada barang dengan `pickup_only: true`, metode `serah = "kirim"` akan ditolak — paksa toggle ke `serah = "ambil"`.
 
-### Langkah 1 — Preview Voucher (Opsional)
-`POST /api/v1/barokahiin/buyer/vouchers/preview`
-```json
-{
-  "voucher_code": "BAROKAH25",
-  "item_uuids": ["<uuid-barang>"],
-  "serah": "kirim",
-  "address_uuid": "<uuid-alamat-pembeli>"
-}
-```
+### Langkah 1 — Tampilkan & Preview Voucher (Opsional)
+
+Agar pembeli langsung mengetahui promo yang tersedia tanpa perlu menghafal kode:
+1. **Ambil Daftar Voucher Aktif (Tanpa Login)**: `GET /api/v1/barokahiin/public/vouchers`
+   - Hanya mengembalikan voucher publik (`is_public: true`) yang aktif, masih dalam masa berlaku, dan kuotanya masih tersedia.
+   - Contoh item respons:
+     ```json
+     {
+       "uuid": "...",
+       "code": "BAROKAH25",
+       "nama": "Diskon Barokah Rp25.000",
+       "deskripsi": "Potongan langsung Rp25.000 minimal belanja Rp100.000.",
+       "tipe": "fixed",
+       "nilai": 25000,
+       "max_discount_idr": null,
+       "min_subtotal_idr": 100000,
+       "quota_total": 100,
+       "quota_used": 3,
+       "per_user_limit": 2,
+       "store_id": null,
+       "category_id": null,
+       "starts_at": "2026-11-24T00:00:00.000000Z",
+       "ends_at": "2027-05-25T00:00:00.000000Z"
+     }
+     ```
+   - **Rekomendasi UI**:
+     - **Homepage / Detail Barang**: tampilkan strip/badge promo *"Tersedia N Voucher Aktif"*.
+     - **Keranjang / Checkout**: sediakan tombol **"Pilih Voucher"** (modal/drawer daftar kartu voucher dari endpoint di atas + input manual kode voucher). Tandai kartu yang memenuhi `subtotal >= min_subtotal_idr` agar pembeli cukup klik **"Pakai"**.
+     - *Tipe voucher*: `fixed` (potongan nominal Rp `nilai`), `percent` (diskon `nilai`% maks `max_discount_idr`), `free_shipping` (potongan ongkir s/d `max_discount_idr`).
+2. **Hitung Potongan Real-Time**: `POST /api/v1/barokahiin/buyer/vouchers/preview`
+   ```json
+   {
+     "voucher_code": "BAROKAH25",
+     "item_uuids": ["<uuid-barang>"],
+     "serah": "kirim",
+     "address_uuid": "<uuid-alamat-pembeli>"
+   }
+   ```
+   Respons mengembalikan `voucher_discount_idr` dan `quote.total_idr` terbaru (atau `422 VOUCHER_INVALID` beserta alasan jika tidak memenuhi syarat).
 
 ### Langkah 2 — Validasi Checkout (Hitung Ongkir & Total, Belum Menahan Barang)
 `POST /api/v1/barokahiin/buyer/checkout/validate`
@@ -225,8 +254,13 @@ Periksa respons `data`:
 
 ## 7. Riwayat Pesanan, State Machine Status, & Aksi UI Pembeli
 
-- **Daftar Riwayat Pesanan Pembeli (lintas perangkat)**: `GET /api/v1/barokahiin/buyer/orders?status=&per_page=20` *(paginasi, termasuk relasi `items`, `store`, `fulfillment`, `payments`, `review` — tidak perlu mengandalkan `localStorage`)*.
+- **Daftar Riwayat Pesanan Pembeli (lintas perangkat)**: `GET /api/v1/barokahiin/buyer/orders?status=&per_page=20` *(paginasi, tidak perlu mengandalkan `localStorage`)*.
 - **Detail Pesanan**: `GET /api/v1/barokahiin/buyer/orders/{kode}`.
+- **Relasi yang selalu konsisten pada `GET /buyer/orders`, `GET /buyer/orders/{kode}`, & `POST /buyer/orders/{uuid}/sync-payment`**:
+  - `items[]`: menyertakan `judul_snapshot`, `harga_idr`, `jalur_snapshot`, shortcut **`slug`** & **`cover_url`**, serta relasi **`item: { id, uuid, slug, cover_media_id, cover_url, cover_media: { id, url, alt } }`** agar foto produk dan tautan ke halaman detail barang langsung tampil.
+  - `store`: `{ id, uuid, nama, slug }`.
+  - `fulfillment`, `payments`, `pickup_code` *(terisi saat `serah = ambil` & `status = siap_diambil`)*.
+  - `review`: `null` atau objek ulasan tersimpan agar status **"Sudah diulas"** selalu konsisten lintas perangkat/URL langsung.
 
 | Status Pesanan | Arti | Tombol / Aksi Pembeli yang Aktif di UI |
 |---|---|---|
@@ -238,6 +272,14 @@ Periksa respons `data`:
 | `diterima` | Barang sudah diterima pembeli | Aktifkan **Beri Ulasan** (`POST /orders/{uuid}/reviews` dengan `{ rating: 1..5, komentar? }` — juga kompatibel dengan `{ rating_barang, rating_layanan, teks? }`) dan **Ajukan Komplain** (`POST /orders/{uuid}/disputes` dalam 48 jam). |
 | `selesai` | Transaksi final | Tampilkan riwayat & Kuitansi Kebaikan. |
 | `kedaluwarsa` / `dibatalkan` | Hold habis atau dibatalkan | Tampilkan status batal/expired & tombol kembali ke katalog. |
+
+### 7.1 Cara Menampilkan Kuitansi Kebaikan (`GET /barokahiin/buyer/orders/{kode}/impact-receipt`)
+Agar pembeli tidak bingung dengan kode teknis ledger (`H`, `O`, `K`, `N`, `program_credits`), **render langsung objek `data.ringkasan_kebaikan`** (jangan tampilkan raw `kuitansi_kebaikan` ke pembeli):
+- `ringkasan_kebaikan.catatan_transparansi`: kalimat ringkas siap tampil di header kuitansi.
+- `ringkasan_kebaikan.total_dana_kebaikan_idr`: total nominal yang mengalir ke program charity & dana kegiatan.
+- `ringkasan_kebaikan.alokasi_dana[]`: daftar pos alokasi (hanya pos > Rp0) berisi `{ kode, label, deskripsi, nominal_idr, persentase }` — langsung render sebagai list/progress bar.
+- `ringkasan_kebaikan.program_tujuan[]`: daftar program charity tujuan lengkap dengan `{ judul, slug, nominal_idr }`.
+- `ringkasan_kebaikan.barang[]`: daftar barang beserta `jalur_label` (`"Barang Charity (95% Program Charity, 5% Cadangan Jaminan)"` vs `"Barang Jual Reguler (Bagi Hasil Transparan)"`).
 
 ---
 

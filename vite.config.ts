@@ -9,8 +9,8 @@ export default defineConfig({
       registerType: "autoUpdate",
       includeAssets: ["favicon.svg"],
       manifest: {
-        name: "Barokahiin — Storefront Barang Donasi Terkurasi",
-        short_name: "Barokahiin",
+        name: "Barokahinn — Storefront Barang Donasi Terkurasi",
+        short_name: "Barokahinn",
         description:
           "Barang yang kamu beli, kebaikan yang kita danai. Katalog barang donasi terkurasi dengan transparansi dana.",
         theme_color: "#0d9488",

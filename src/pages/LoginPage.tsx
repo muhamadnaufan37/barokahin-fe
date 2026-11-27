@@ -61,7 +61,7 @@ export const LoginPage: React.FC = () => {
   }, [remainingSeconds]);
 
   useEffect(() => {
-    document.title = "Masuk / Daftar — Barokahiin";
+    document.title = "Masuk / Daftar — Barokahinn";
   }, []);
 
   // Poll QR status while on QR mode
@@ -77,7 +77,8 @@ export const LoginPage: React.FC = () => {
           await completeAuth(
             res.token,
             res.expires_in_seconds,
-            res.profile_completeness
+            res.profile_completeness,
+            res.user
           );
           navigate(nextPath, { replace: true });
         } else if (res.status === "expired" || res.status === "consumed") {
@@ -161,7 +162,8 @@ export const LoginPage: React.FC = () => {
       await completeAuth(
         result.token,
         result.expires_in_seconds,
-        result.profile_completeness
+        result.profile_completeness,
+        result.user
       );
       navigate(nextPath, { replace: true });
     } catch (cause) {
@@ -188,7 +190,8 @@ export const LoginPage: React.FC = () => {
       await completeAuth(
         result.token,
         result.expires_in_seconds,
-        result.profile_completeness
+        result.profile_completeness,
+        result.user
       );
       navigate(nextPath, { replace: true });
     } catch (cause) {
@@ -217,7 +220,8 @@ export const LoginPage: React.FC = () => {
       await completeAuth(
         result.token,
         result.expires_in_seconds,
-        result.profile_completeness
+        result.profile_completeness,
+        result.user
       );
       navigate(nextPath, { replace: true });
     } catch (cause) {
@@ -260,7 +264,7 @@ export const LoginPage: React.FC = () => {
           Akun pembeli
         </p>
         <h1 className="font-display mt-1 text-2xl font-bold text-tinta">
-          {mode === "register" ? "Daftar akun baru" : "Masuk ke Barokahiin"}
+          {mode === "register" ? "Daftar akun baru" : "Masuk ke Barokahinn"}
         </h1>
         <p className="mt-1.5 text-sm leading-6 text-muted">
           Keranjangmu tetap tersimpan. Akun diperlukan untuk membuat pesanan.

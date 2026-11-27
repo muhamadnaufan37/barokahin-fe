@@ -270,26 +270,52 @@ export interface PurchaseRequestResult {
 export interface BuyerProfileCompleteness {
   ready: boolean;
   missing: string[];
+  user?: {
+    id?: number | string;
+    role_id?: number | string;
+    nama_lengkap?: string | null;
+    email?: string | null;
+    email_verified_at?: string | null;
+    phone?: string | null;
+    phone_verified_at?: string | null;
+    province_code?: string | null;
+    regency_code?: string | null;
+    district_code?: string | null;
+    village_code?: string | null;
+    wilayah_code?: string | null;
+    region?: {
+      kode_resmi?: string;
+      nama?: string;
+    } | null;
+    terms_version?: string | null;
+    terms_accepted_at?: string | null;
+  } | null;
 }
 
 export interface BuyerAddress {
+  id?: number | string;
   uuid: string;
   penerima: string;
   kontak_penerima: string;
-  region_id?: string;
+  phone_penerima?: string;
+  region_id?: string | number;
   region_nama?: string;
   region?: {
+    id?: number | string;
     kode_resmi?: string;
     level?: number | string;
     nama?: string;
     kode_pos?: string | null;
+    parent_id?: number | string | null;
   };
   province_code?: string;
   regency_code?: string;
   district_code?: string;
   village_code?: string;
+  wilayah_code?: string;
   kode_pos: string;
-  jalan: string;
+  jalan_nomor_enc: string;
+  jalan_nomor?: string;
   rt_rw: string;
   patokan: string;
   jenis_tempat: string;
@@ -297,6 +323,8 @@ export interface BuyerAddress {
   utama?: boolean;
   warnings?: string[];
   profile_completeness?: BuyerProfileCompleteness;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface CreateBuyerAddressPayload {
@@ -317,12 +345,22 @@ export interface CreateBuyerAddressPayload {
 export interface PublicVoucher {
   uuid?: string;
   code: string;
+  nama?: string;
   judul?: string;
   deskripsi?: string;
-  discount_type?: "fixed" | "percent";
+  tipe?: "fixed" | "percent" | "free_shipping";
+  nilai?: number;
+  discount_type?: "fixed" | "percent" | "free_shipping";
   discount_value?: number;
   min_subtotal_idr?: number;
   max_discount_idr?: number | null;
+  quota_total?: number | null;
+  quota_used?: number | null;
+  per_user_limit?: number | null;
+  store_id?: number | null;
+  category_id?: number | null;
+  starts_at?: string | null;
+  ends_at?: string | null;
   valid_until?: string | null;
 }
 
@@ -348,6 +386,12 @@ export interface CheckoutQuote {
 }
 
 export interface CheckoutValidation {
+  ready?: boolean;
+  missing?: string[];
+  cart_issues?: Array<
+    string | { uuid?: string; item_uuid?: string; message?: string; reason?: string }
+  >;
+  voucher_error?: string | null;
   quote: CheckoutQuote;
   items?: Array<{
     uuid: string;
@@ -422,22 +466,65 @@ export interface QrStatusResult {
   profile_completeness?: BuyerProfileCompleteness;
 }
 
+export interface BuyerOrderItem {
+  judul: string;
+  price_idr: number;
+  jalur_snapshot?: string;
+  charity_program_id?: number | null;
+  slug?: string | null;
+  cover_url?: string | null;
+}
+
 export interface BuyerOrder {
   uuid: string;
   kode: string;
   kode_pesanan?: string;
   status: string;
   created_at?: string;
-  items?: Array<{ judul: string; price_idr: number }>;
+  items?: BuyerOrderItem[];
+  subtotal_idr?: number;
+  ongkir_idr?: number;
+  packing_fee_idr?: number;
+  rounding_donation_idr?: number;
+  voucher_discount_idr?: number;
   total_idr?: number;
   hold_expires_at?: string;
+  dibayar_pada?: string | null;
+  disiapkan_pada?: string | null;
+  diterima_pada?: string | null;
+  selesai_pada?: string | null;
+  alasan_batal?: string | null;
   serah?: "ambil" | "kirim";
   zona?: string;
   address_uuid?: string;
+  pickup_code?: string | null;
+  store?: {
+    nama?: string;
+    slug?: string;
+  } | null;
+  review?: {
+    rating?: number;
+    komentar?: string | null;
+    teks?: string | null;
+  } | null;
+  reviews?: Array<{
+    rating?: number;
+    komentar?: string | null;
+    teks?: string | null;
+  }> | null;
+  has_review?: boolean;
+  fulfillment?: {
+    kurir?: string | null;
+    resi?: string | null;
+    ambil_deadline?: string | null;
+    catatan?: string | null;
+  } | null;
   payments?: PaymentInstruction[];
 }
 
 export interface BuyerOrderPickup {
+  pickup_code?: string | null;
+  ambil_deadline?: string | null;
   alamat_lengkap?: string;
   patokan?: string;
   kontak?: string;
@@ -446,14 +533,34 @@ export interface BuyerOrderPickup {
 }
 
 export interface BuyerReviewPayload {
-  rating_barang: number;
-  rating_layanan: number;
-  teks: string;
+  rating: number;
+  komentar?: string;
 }
 
 export interface ImpactReceipt {
   rincian_pembayaran: Record<string, number>;
-  kuitansi_kebaikan: Record<string, number>;
+  kuitansi_kebaikan?: Record<string, number>;
+  ringkasan_kebaikan?: {
+    catatan_transparansi?: string;
+    total_dana_kebaikan_idr?: number;
+    alokasi_dana?: Array<{
+      kode?: string;
+      label: string;
+      deskripsi?: string;
+      nominal_idr: number;
+      persentase?: number;
+    }>;
+    program_tujuan?: Array<{
+      judul: string;
+      slug?: string;
+      nominal_idr: number;
+    }>;
+    barang?: Array<{
+      judul?: string;
+      jalur_label: string;
+      harga_idr?: number;
+    }>;
+  };
 }
 
 export interface DonationRequestPayload {

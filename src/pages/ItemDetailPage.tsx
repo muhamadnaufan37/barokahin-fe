@@ -74,7 +74,7 @@ export const ItemDetailPage: React.FC = () => {
         const data = await publicApi.getItemBySlug(slug);
         if (!active) return;
         setItem(data);
-        document.title = `${data.judul} — Barokahiin`;
+        document.title = `${data.judul} — Barokahinn`;
 
         if (!data.pickup_only && selectedRegion?.id) {
           publicApi
@@ -133,8 +133,8 @@ export const ItemDetailPage: React.FC = () => {
     if (navigator.share) {
       try {
         await navigator.share({
-          title: `${item.judul} — Barokahiin`,
-          text: `${item.judul} (${formatRupiah(item.harga_rupiah)}) di Barokahiin`,
+          title: `${item.judul} — Barokahinn`,
+          text: `${item.judul} (${formatRupiah(item.harga_rupiah)}) di Barokahinn`,
           url,
         });
         return;
@@ -302,7 +302,7 @@ export const ItemDetailPage: React.FC = () => {
 
   const waConfirmLink = buildWhatsAppLink(
     settings?.whatsapp_resmi,
-    `Assalamu'alaikum / Halo Admin Barokahiin, saya ${
+    `Assalamu'alaikum / Halo Admin Barokahinn, saya ${
       namaPembeli || "(Nama)"
     } sudah mengirim permintaan beli untuk barang ${item.kode_barang} - ${
       item.judul
@@ -312,7 +312,7 @@ export const ItemDetailPage: React.FC = () => {
   );
   const waAskLink = buildWhatsAppLink(
     settings?.whatsapp_resmi,
-    `Halo Admin Barokahiin, saya ingin bertanya tentang barang ${item.kode_barang} (${item.judul}).`
+    `Halo Admin Barokahinn, saya ingin bertanya tentang barang ${item.kode_barang} (${item.judul}).`
   );
 
   return (
@@ -991,7 +991,7 @@ export const ItemDetailPage: React.FC = () => {
             <summary className="flex cursor-pointer list-none items-center justify-between gap-2 text-sm font-semibold text-tinta">
               <span className="flex items-center gap-2">
                 <i className="pi pi-verified text-teh" aria-hidden="true" />
-                <span>Segel Kurasi Barokahiin</span>
+                <span>Segel Kurasi Barokahinn</span>
               </span>
               <span className="inline-flex items-center gap-1.5">
                 <span className="rounded-pil bg-teh-muda px-2.5 py-0.5 text-[11px] font-semibold text-teh-tua">

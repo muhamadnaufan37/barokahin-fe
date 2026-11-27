@@ -12,7 +12,7 @@ export const FavoritesPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    document.title = "Barang Favorit — Barokahiin";
+    document.title = "Barang Favorit — Barokahinn";
     if (!favorites.length) {
       setItems([]);
       return;

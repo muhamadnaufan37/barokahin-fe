@@ -15,6 +15,7 @@ import {
   ImpactReceipt,
   ItemConditionGrade,
   ItemPublicStatus,
+  PaginationMeta,
   PublicActivity,
   PublicActivityDetail,
   PublicAdministrativeRegion,
@@ -442,7 +443,7 @@ async function request<T>(
     });
   } catch {
     throw new ApiClientError(
-      "Tidak dapat terhubung ke server Barokahiin. Periksa koneksi internet Anda atau coba beberapa saat lagi.",
+      "Tidak dapat terhubung ke server Barokahinn. Periksa koneksi internet Anda atau coba beberapa saat lagi.",
       0
     );
   }
@@ -511,6 +512,84 @@ function buyerRequest<T>(
   const headers = new Headers(options.headers);
   headers.set("Authorization", `Bearer ${token}`);
   return request<T>(path, { ...options, headers }, BUYER_API_BASE);
+}
+
+function normalizeBuyerAddress(
+  addr: BuyerAddress,
+  fallback: Partial<CreateBuyerAddressPayload> = {}
+): BuyerAddress {
+  const villageCode =
+    addr.village_code ||
+    addr.wilayah_code ||
+    addr.region?.kode_resmi ||
+    fallback.village_code;
+  const parts = villageCode ? villageCode.split(".") : [];
+  return {
+    ...addr,
+    kontak_penerima:
+      addr.kontak_penerima ||
+      addr.phone_penerima ||
+      fallback.kontak_penerima ||
+      "",
+    jalan: addr.jalan || addr.jalan_nomor || fallback.jalan || "",
+    utama: addr.utama ?? addr.is_default ?? fallback.is_default ?? false,
+    region_nama: addr.region_nama || addr.region?.nama,
+    kode_pos:
+      addr.kode_pos || addr.region?.kode_pos || fallback.kode_pos || "",
+    province_code: addr.province_code || fallback.province_code || parts[0],
+    regency_code:
+      addr.regency_code ||
+      fallback.regency_code ||
+      (parts.length >= 2 ? `${parts[0]}.${parts[1]}` : undefined),
+    district_code:
+      addr.district_code ||
+      fallback.district_code ||
+      (parts.length >= 3 ? `${parts[0]}.${parts[1]}.${parts[2]}` : undefined),
+    village_code: villageCode,
+  };
+}
+
+type RawBuyerOrderItem = {
+  judul?: string;
+  judul_snapshot?: string;
+  price_idr?: number;
+  harga_idr?: number;
+  jalur_snapshot?: string;
+  charity_program_id?: number | null;
+  slug?: string | null;
+  cover_url?: string | null;
+  item?: {
+    slug?: string | null;
+    cover_url?: string | null;
+    cover_media?: { url?: string | null } | null;
+  } | null;
+};
+
+type RawBuyerOrder = Omit<BuyerOrder, "items"> & {
+  kode_pesanan?: string;
+  items?: RawBuyerOrderItem[];
+};
+
+function normalizeBuyerOrder(
+  raw: RawBuyerOrder,
+  fallbackCode?: string
+): BuyerOrder {
+  return {
+    ...raw,
+    kode: raw.kode || raw.kode_pesanan || fallbackCode || raw.uuid,
+    items: raw.items?.map((item) => ({
+      judul: item.judul || item.judul_snapshot || "Barang",
+      price_idr: item.price_idr ?? item.harga_idr ?? 0,
+      jalur_snapshot: item.jalur_snapshot,
+      charity_program_id: item.charity_program_id ?? null,
+      slug: item.slug || item.item?.slug || null,
+      cover_url:
+        item.cover_url ||
+        item.item?.cover_url ||
+        item.item?.cover_media?.url ||
+        null,
+    })),
+  };
 }
 
 export const publicApi = {
@@ -845,31 +924,10 @@ export const publicApi = {
 
   async getBuyerAddresses(token: string): Promise<BuyerAddress[]> {
     const response = await buyerRequest<
-      Array<BuyerAddress & { phone_penerima?: string; jalan_nomor?: string }> | { items: Array<BuyerAddress & { phone_penerima?: string; jalan_nomor?: string }> }
+      BuyerAddress[] | { items: BuyerAddress[] }
     >("/me/addresses", token);
     const list = Array.isArray(response) ? response : response.items;
-    return list.map((addr) => {
-      const villageCode = addr.village_code || addr.region?.kode_resmi;
-      const parts = villageCode ? villageCode.split(".") : [];
-      return {
-        ...addr,
-        kontak_penerima: addr.kontak_penerima || addr.phone_penerima || "",
-        jalan: addr.jalan || addr.jalan_nomor || "",
-        utama: addr.utama ?? addr.is_default ?? false,
-        region_nama: addr.region_nama || addr.region?.nama,
-        kode_pos: addr.kode_pos || addr.region?.kode_pos || "",
-        province_code: addr.province_code || parts[0],
-        regency_code:
-          addr.regency_code ||
-          (parts.length >= 2 ? `${parts[0]}.${parts[1]}` : undefined),
-        district_code:
-          addr.district_code ||
-          (parts.length >= 3
-            ? `${parts[0]}.${parts[1]}.${parts[2]}`
-            : undefined),
-        village_code: villageCode,
-      };
-    });
+    return list.map((addr) => normalizeBuyerAddress(addr));
   },
 
   async createBuyerAddress(
@@ -890,17 +948,11 @@ export const publicApi = {
       jenis_tempat: payload.jenis_tempat,
       is_default: payload.is_default ?? true,
     };
-    const created = await buyerRequest<
-      BuyerAddress & { phone_penerima?: string; jalan_nomor?: string }
-    >("/me/addresses", token, {
+    const created = await buyerRequest<BuyerAddress>("/me/addresses", token, {
       method: "POST",
       body: JSON.stringify(apiPayload),
     });
-    return {
-      ...created,
-      kontak_penerima: created.kontak_penerima || created.phone_penerima || payload.kontak_penerima,
-      jalan: created.jalan || created.jalan_nomor || payload.jalan,
-    };
+    return normalizeBuyerAddress(created, payload);
   },
 
   async updateBuyerAddress(
@@ -929,23 +981,15 @@ export const publicApi = {
     if (payload.is_default !== undefined)
       apiPayload.is_default = payload.is_default;
 
-    const updated = await buyerRequest<
-      BuyerAddress & { phone_penerima?: string; jalan_nomor?: string }
-    >(`/me/addresses/${encodeURIComponent(uuid)}`, token, {
-      method: "PATCH",
-      body: JSON.stringify(apiPayload),
-    });
-    return {
-      ...updated,
-      kontak_penerima:
-        updated.kontak_penerima ||
-        updated.phone_penerima ||
-        payload.kontak_penerima ||
-        "",
-      jalan: updated.jalan || updated.jalan_nomor || payload.jalan || "",
-      utama: updated.utama ?? updated.is_default ?? payload.is_default ?? false,
-      region_nama: updated.region_nama || updated.region?.nama,
-    };
+    const updated = await buyerRequest<BuyerAddress>(
+      `/me/addresses/${encodeURIComponent(uuid)}`,
+      token,
+      {
+        method: "PATCH",
+        body: JSON.stringify(apiPayload),
+      }
+    );
+    return normalizeBuyerAddress(updated, payload);
   },
 
   deleteBuyerAddress(token: string, uuid: string): Promise<unknown> {
@@ -1065,53 +1109,67 @@ export const publicApi = {
     return buyerRequest("/me", token, { method: "DELETE" });
   },
 
+  async getBuyerOrders(
+    token: string,
+    query: { status?: string; per_page?: number; page?: number } = {}
+  ): Promise<{ orders: BuyerOrder[]; pagination: PaginationMeta }> {
+    const res = await buyerRequest<
+      | RawBuyerOrder[]
+      | {
+          items?: RawBuyerOrder[];
+          orders?: RawBuyerOrder[];
+          data?: RawBuyerOrder[];
+          pagination?: PaginationMeta;
+          meta?: PaginationMeta;
+          current_page?: number;
+          last_page?: number;
+          per_page?: number;
+          total?: number;
+        }
+    >(`/orders${buildQueryString(query)}`, token);
+
+    const rawList = Array.isArray(res)
+      ? res
+      : res.items || res.orders || res.data || [];
+    const orders: BuyerOrder[] = rawList.map((raw) =>
+      normalizeBuyerOrder(raw)
+    );
+    const pagination: PaginationMeta = Array.isArray(res)
+      ? {
+          current_page: 1,
+          last_page: 1,
+          per_page: orders.length || query.per_page || 20,
+          total: orders.length,
+        }
+      : res.pagination ||
+        res.meta || {
+          current_page: res.current_page ?? 1,
+          last_page: res.last_page ?? 1,
+          per_page: res.per_page ?? (query.per_page || 20),
+          total: res.total ?? orders.length,
+        };
+
+    return { orders, pagination };
+  },
+
   async getBuyerOrder(token: string, code: string): Promise<BuyerOrder> {
-    const raw = await buyerRequest<
-      Omit<BuyerOrder, "items"> & {
-        kode_pesanan?: string;
-        items?: Array<{
-          judul?: string;
-          judul_snapshot?: string;
-          price_idr?: number;
-          harga_idr?: number;
-        }>;
-      }
-    >(`/orders/${encodeURIComponent(code)}`, token);
-    return {
-      ...raw,
-      kode: raw.kode || raw.kode_pesanan || code,
-      items: raw.items?.map((item) => ({
-        judul: item.judul || item.judul_snapshot || "Barang",
-        price_idr: item.price_idr ?? item.harga_idr ?? 0,
-      })),
-    };
+    const raw = await buyerRequest<RawBuyerOrder>(
+      `/orders/${encodeURIComponent(code)}`,
+      token
+    );
+    return normalizeBuyerOrder(raw, code);
   },
 
   async syncBuyerOrderPayment(
     token: string,
     uuid: string
   ): Promise<BuyerOrder> {
-    const raw = await buyerRequest<
-      Omit<BuyerOrder, "items"> & {
-        kode_pesanan?: string;
-        items?: Array<{
-          judul?: string;
-          judul_snapshot?: string;
-          price_idr?: number;
-          harga_idr?: number;
-        }>;
-      }
-    >(`/orders/${encodeURIComponent(uuid)}/sync-payment`, token, {
-      method: "POST",
-    });
-    return {
-      ...raw,
-      kode: raw.kode || raw.kode_pesanan || "",
-      items: raw.items?.map((item) => ({
-        judul: item.judul || item.judul_snapshot || "Barang",
-        price_idr: item.price_idr ?? item.harga_idr ?? 0,
-      })),
-    };
+    const raw = await buyerRequest<RawBuyerOrder>(
+      `/orders/${encodeURIComponent(uuid)}/sync-payment`,
+      token,
+      { method: "POST" }
+    );
+    return normalizeBuyerOrder(raw);
   },
 
   getBuyerImpactReceipt(token: string, code: string): Promise<ImpactReceipt> {
